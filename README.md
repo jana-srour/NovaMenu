@@ -1,36 +1,157 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# NOVAMENU
+
+**NOVAMENU** is a digital restaurant menu and ordering platform built for modern restaurants.
+
+It provides restaurants with a digital menu, QR-based access, online ordering, restaurant operations tools, team management, pricing controls, and subscription-based plans.
+
+## Features
+
+* Digital restaurant menu
+* QR code menu access
+* Customer ordering
+* WhatsApp ordering
+* Order management
+* Menu management
+* Extras and sauces
+* Restaurant pricing & promotions
+* Team management and permissions
+* QR Studio
+* Restaurant customization and branding
+* Billing and subscription management
+* 7-day full-access trial
+* Paddle-powered payments and subscriptions
+
+## Tech Stack
+
+* **Next.js**
+* **TypeScript**
+* **React**
+* **Tailwind CSS**
+* **Supabase**
+* **Paddle**
+* **Lucide React**
 
 ## Getting Started
 
-First, run the development server:
+### Prerequisites
+
+Make sure you have:
+
+* Node.js installed
+* npm installed
+* A Supabase project
+* Paddle credentials for billing functionality
+
+### Installation
+
+Clone the repository:
+
+```bash
+git clone https://github.com/jana-srour/NovaMenu.git
+cd NovaMenu
+```
+
+Install dependencies:
+
+```bash
+npm install
+```
+
+### Environment Variables
+
+Create a `.env.local` file in the project root.
+
+Add the required environment variables for Supabase and Paddle.
+
+**Never commit `.env.local` or any production secrets to Git.**
+
+### Run the Development Server
+
+Start the development server:
 
 ```bash
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Open:
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+```text
+http://localhost:3000
+```
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+The application will automatically reload when you make changes.
 
-## Learn More
+## Production Build
 
-To learn more about Next.js, take a look at the following resources:
+To create a production build:
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+```bash
+npm run build
+```
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+To run the production build locally:
 
-## Deploy on Vercel
+```bash
+npm start
+```
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+## Project Structure
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+```text
+app/
+├── api/
+├── dashboard/
+├── login/
+├── signup/
+└── menu/
+
+lib/
+├── billing/
+├── live-sync.ts
+├── pricing-audit.ts
+├── restaurant-theme.ts
+├── supabase.ts
+└── team-permissions.ts
+
+public/
+```
+
+## Billing
+
+NOVAMENU uses Paddle for subscription billing.
+
+Available plans:
+
+| Plan       | Monthly | Yearly |
+| ---------- | ------: | -----: |
+| Starter    |     $25 |   $250 |
+| Pro        |     $69 |   $690 |
+| Enterprise |     $99 |   $890 |
+
+New restaurants receive a **7-day trial with full access to implemented features**.
+
+Subscriptions automatically renew unless canceled.
+
+## Security
+
+Sensitive credentials are stored through environment variables and must never be committed to the repository.
+
+The repository intentionally excludes environment files through `.gitignore`.
+
+## Deployment
+
+NOVAMENU can be deployed using Vercel or another Next.js-compatible hosting platform.
+
+For production deployment, configure all required environment variables in the hosting provider and use the Paddle **Live** environment.
+
+The Paddle webhook endpoint is:
+
+```text
+/api/paddle/webhook
+```
+
+## License
+
+Proprietary software developed by **Novera Labs**.
+
+© Novera Labs. All rights reserved.
