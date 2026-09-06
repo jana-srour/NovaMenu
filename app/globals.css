@@ -1,0 +1,68 @@
+@import "tailwindcss";
+
+:root {
+  --background: #ffffff;
+  --foreground: #202534;
+  --panel: #ffffff;
+  --panel-alt: #f3f4ff;
+  --border: #e7e4de;
+  --accent: #536dfe;
+  --accent-soft: #eef0ff;
+  --portal-background: #ffffff;
+  --portal-surface: #ffffff;
+  --portal-text: #202534;
+  --portal-ink: #202534;
+  --portal-border: #e7e4de;
+  --portal-accent: #536dfe;
+  --portal-accent-soft: #eef0ff;
+  --portal-muted: #756f66;
+  --portal-success-bg: #ecf8f1;
+  --portal-success-text: #3e8e68;
+  --portal-error-bg: #fff1ec;
+  --portal-error-text: #a85c4a;
+  --portal-disabled-bg: #e8e7e4;
+  --portal-disabled-text: #9a9892;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --background: #202534;
+    --foreground: #f7f5f1;
+    --panel: #2b3348;
+    --panel-alt: #2e3752;
+    --border: #3d4a67;
+    --accent: #536dfe;
+    --accent-soft: #765bd5;
+    --portal-background: #202534;
+    --portal-surface: #2b3348;
+    --portal-text: #f7f5f1;
+    --portal-border: #3d4a67;
+    --portal-accent: #536dfe;
+    --portal-accent-soft: #765bd5;
+    --portal-muted: #a7a1a0;
+    --portal-success-bg: #ecf8f1;
+    --portal-success-text: #3e8e68;
+    --portal-error-bg: #fff1ec;
+    --portal-error-text: #a85c4a;
+    --portal-disabled-bg: #3a3f4d;
+    --portal-disabled-text: #c7c4c1;
+  }
+}
+
+html {
+  background: var(--background);
+  color: var(--foreground);
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: Arial, Helvetica, sans-serif;
+}
