@@ -765,7 +765,7 @@ export default function DashboardLayout({
 
             <div className="flex h-10 w-10 items-center justify-center overflow-hidden rounded-xl">
               <img
-                src="/novamenu-icon.png"
+                src="/novamenu-icon.jpeg"
                 alt="NOVAMENU"
                 className="h-full w-full object-contain"
               />
