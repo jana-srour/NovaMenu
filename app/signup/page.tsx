@@ -285,22 +285,11 @@ export default function SignUpPage() {
             "
           >
 
-            <div
-              className="
-                absolute
-                inset-0
-                bg-gradient-to-br
-                from-[#C9A76A]
-                via-[#B48C4E]
-                to-[#6E542C]
-              "
+            <img
+              src="/novamenu-icon.jpeg"
+              alt="NOVAMENU"
+              className="h-full w-full object-contain"
             />
-
-            <div className="absolute -top-4 -right-4 w-8 h-8 rounded-full bg-white/30 blur-lg" />
-
-            <span className="relative z-10 text-[#11100D] font-black text-sm">
-              N
-            </span>
 
           </div>
 

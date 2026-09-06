@@ -705,14 +705,12 @@ export default function DashboardLayout({
 
         <Link href="/dashboard" aria-label="Go to dashboard" className="flex items-center gap-3">
 
-<div
-  className="flex h-9 w-9 items-center justify-center rounded-xl text-sm font-black"
-  style={{
-    background: theme.portal_accent,
-    color: '#ffffff',
-  }}
->
-  N
+<div className="flex h-9 w-9 items-center justify-center overflow-hidden rounded-xl">
+  <img
+    src="/novamenu-icon.jpeg"
+    alt="NOVAMENU"
+    className="h-full w-full object-contain"
+  />
 </div>
           <div>
 <div
@@ -765,13 +763,12 @@ export default function DashboardLayout({
 
           <Link href="/dashboard" aria-label="Go to dashboard" className="flex items-center gap-3">
 
-            <div
-              className="flex h-10 w-10 items-center justify-center rounded-xl text-sm font-black text-white shadow-md"
-              style={{
-                background: theme.portal_accent,
-              }}
-            >
-              N
+            <div className="flex h-10 w-10 items-center justify-center overflow-hidden rounded-xl">
+              <img
+                src="/novamenu-icon.png"
+                alt="NOVAMENU"
+                className="h-full w-full object-contain"
+              />
             </div>
 
             <div>

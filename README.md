@@ -1,157 +1,156 @@
 # NOVAMENU
 
-**NOVAMENU** is a digital restaurant menu and ordering platform built for modern restaurants.
+**NOVAMENU** is a proprietary restaurant technology platform developed by **Novera Labs**.
 
-It provides restaurants with a digital menu, QR-based access, online ordering, restaurant operations tools, team management, pricing controls, and subscription-based plans.
+The platform is designed to help restaurants build a modern digital menu experience while bringing essential customer-facing and restaurant management capabilities together in one unified system.
 
-## Features
+## Product Overview
 
-* Digital restaurant menu
-* QR code menu access
-* Customer ordering
-* WhatsApp ordering
+NOVAMENU provides restaurants with a digital platform for presenting their menus, connecting with customers, managing orders, maintaining restaurant content, and controlling their digital operations.
+
+The platform combines a **customer-facing digital menu** with a **private restaurant management workspace**, allowing restaurants to manage their digital presence from a centralized environment.
+
+## Core Capabilities
+
+### Digital Menu
+
+Restaurants can create and manage a modern digital menu with:
+
+* Categories and menu items
+* Item availability
+* Pricing
+* Discounts and promotions
+* Extras and sauces
+* Restaurant branding
+* Custom themes
+* QR-based access
+
+### Customer Ordering
+
+The public menu provides customers with a streamlined ordering experience, including:
+
+* Menu browsing
+* Item selection
+* Quantity management
+* Extras and sauces
+* Cart management
+* Order submission
+* WhatsApp-based ordering
+
+### Restaurant Operations
+
+The management platform provides tools for day-to-day restaurant operations, including:
+
+* Operational dashboard
 * Order management
 * Menu management
-* Extras and sauces
-* Restaurant pricing & promotions
-* Team management and permissions
+* Pricing and promotions
+* Team management
+* Role-based permissions
 * QR Studio
-* Restaurant customization and branding
-* Billing and subscription management
-* 7-day full-access trial
-* Paddle-powered payments and subscriptions
+* Restaurant settings and customization
 
-## Tech Stack
+### Restaurant Branding
+
+NOVAMENU is designed to adapt to each restaurant rather than presenting every business with the same generic interface.
+
+Restaurants can customize elements of their digital presence, including branding, visual themes, restaurant information, and customer-facing menu presentation.
+
+## Platform Experience
+
+NOVAMENU consists of two connected experiences:
+
+**Restaurant Workspace**
+
+A private management environment where authorized restaurant users can manage their restaurant's digital menu, orders, team, pricing, branding, and other available operational tools.
+
+**Public Menu**
+
+A customer-facing experience optimized for QR codes and mobile devices, allowing customers to browse a restaurant's menu and place orders through supported ordering channels.
+
+## Subscription Model
+
+NOVAMENU operates as a SaaS platform with subscription-based access.
+
+The current subscription structure includes:
+
+| Plan           | Positioning                                               |
+| -------------- | --------------------------------------------------------- |
+| **Starter**    | Essential digital menu and QR capabilities                |
+| **Pro**        | Menu management plus core restaurant operations           |
+| **Enterprise** | Full platform capabilities and advanced operational tools |
+
+New restaurants receive a **7-day trial period** with access to the platform's implemented capabilities.
+
+Subscription access determines which restaurant management features are available to each account.
+
+## Billing
+
+NOVAMENU uses **Paddle** as its payment and subscription infrastructure.
+
+The platform supports:
+
+* Monthly subscriptions
+* Yearly subscriptions
+* Automatic recurring billing
+* Subscription management
+* Subscription cancellation
+* Billing management
+* Subscription status synchronization
+
+## Technology
+
+NOVAMENU is built using a modern web application stack, including:
 
 * **Next.js**
-* **TypeScript**
 * **React**
+* **TypeScript**
 * **Tailwind CSS**
 * **Supabase**
 * **Paddle**
 * **Lucide React**
 
-## Getting Started
+The platform is designed with a modular architecture that allows additional restaurant capabilities and services to be introduced over time.
 
-### Prerequisites
+## Product Philosophy
 
-Make sure you have:
+NOVAMENU is built around several principles:
 
-* Node.js installed
-* npm installed
-* A Supabase project
-* Paddle credentials for billing functionality
+**Simplicity**
+Restaurant teams should be able to manage their digital presence without unnecessary complexity.
 
-### Installation
+**Modern Customer Experience**
+The public menu should feel like a polished digital product rather than a traditional PDF or static webpage.
 
-Clone the repository:
+**Restaurant Identity**
+Each restaurant should be able to maintain its own identity, branding, and visual experience.
 
-```bash
-git clone https://github.com/jana-srour/NovaMenu.git
-cd NovaMenu
-```
+**Operational Efficiency**
+Customer-facing experiences and restaurant management tools should work together rather than existing as disconnected systems.
 
-Install dependencies:
+**Scalability**
+The platform is designed to evolve from a digital menu solution into a broader restaurant technology platform.
 
-```bash
-npm install
-```
+## Security & Access
 
-### Environment Variables
+NOVAMENU is proprietary commercial software.
 
-Create a `.env.local` file in the project root.
+Source code, infrastructure configuration, database architecture, internal APIs, authentication systems, billing configuration, credentials, and production systems are restricted to authorized personnel.
 
-Add the required environment variables for Supabase and Paddle.
+Sensitive credentials and production configuration are maintained outside the source repository.
 
-**Never commit `.env.local` or any production secrets to Git.**
+## Development
 
-### Run the Development Server
+This repository contains the source code for the NOVAMENU platform.
 
-Start the development server:
+Development, infrastructure, database, deployment, and operational procedures are intended for authorized maintainers and contributors.
 
-```bash
-npm run dev
-```
+Detailed internal implementation and infrastructure documentation is intentionally excluded from this repository.
 
-Open:
+## Ownership
 
-```text
-http://localhost:3000
-```
+NOVAMENU is proprietary software developed and owned by **Novera Labs**.
 
-The application will automatically reload when you make changes.
-
-## Production Build
-
-To create a production build:
-
-```bash
-npm run build
-```
-
-To run the production build locally:
-
-```bash
-npm start
-```
-
-## Project Structure
-
-```text
-app/
-├── api/
-├── dashboard/
-├── login/
-├── signup/
-└── menu/
-
-lib/
-├── billing/
-├── live-sync.ts
-├── pricing-audit.ts
-├── restaurant-theme.ts
-├── supabase.ts
-└── team-permissions.ts
-
-public/
-```
-
-## Billing
-
-NOVAMENU uses Paddle for subscription billing.
-
-Available plans:
-
-| Plan       | Monthly | Yearly |
-| ---------- | ------: | -----: |
-| Starter    |     $25 |   $250 |
-| Pro        |     $69 |   $690 |
-| Enterprise |     $99 |   $890 |
-
-New restaurants receive a **7-day trial with full access to implemented features**.
-
-Subscriptions automatically renew unless canceled.
-
-## Security
-
-Sensitive credentials are stored through environment variables and must never be committed to the repository.
-
-The repository intentionally excludes environment files through `.gitignore`.
-
-## Deployment
-
-NOVAMENU can be deployed using Vercel or another Next.js-compatible hosting platform.
-
-For production deployment, configure all required environment variables in the hosting provider and use the Paddle **Live** environment.
-
-The Paddle webhook endpoint is:
-
-```text
-/api/paddle/webhook
-```
-
-## License
-
-Proprietary software developed by **Novera Labs**.
+Unauthorized copying, redistribution, modification, reverse engineering, or commercial use of this software is prohibited.
 
 © Novera Labs. All rights reserved.

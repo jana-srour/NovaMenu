@@ -1436,15 +1436,11 @@ export default function PublicMenuPage() {
               }}
             />
 
-            <span
-              className="font-serif text-2xl"
-              style={{
-                color:
-                  theme.public_text,
-              }}
-            >
-              N
-            </span>
+            <img
+              src="/novamenu-icon.jpeg"
+              alt="NOVAMENU"
+              className="relative h-12 w-12 rounded-full object-cover"
+            />
           </div>
 
           <p
@@ -1967,36 +1963,24 @@ export default function PublicMenuPage() {
             <div className="flex items-center gap-3">
 
               <div
-                className="relative w-9 h-9 rounded-full border flex items-center justify-center"
+                className="relative w-9 h-9 rounded-full overflow-hidden flex items-center justify-center"
                 style={{
-                  borderColor: `${theme.public_accent}80`,
-                  background: `${theme.public_surface}90`,
-                  boxShadow:
-                    `0 0 30px ${theme.public_accent}18`,
+                  boxShadow: `0 0 18px ${theme.public_accent}30`,
                 }}
               >
-
-                <span
-                  className="font-serif text-sm font-bold"
-                  style={{
-                    color: theme.public_text,
-                    textShadow:
-                      `0 0 12px ${theme.public_accent}20`,
-                  }}
-                >
-                  N
-                </span>
-
-                <span
-                  className="absolute -right-1 -top-1 w-2 h-2 rounded-full"
-                  style={{
-                    background:
-                      theme.public_accent,
-                    boxShadow:
-                      `0 0 10px ${theme.public_accent}`,
-                  }}
+                <img
+                  src="/novamenu-icon.jpeg"
+                  alt="NOVAMENU"
+                  className="h-full w-full object-cover"
                 />
 
+                <span
+                  className="absolute -right-0.5 -top-0.5 w-1.5 h-1.5 rounded-full"
+                  style={{
+                    background: theme.public_accent,
+                    boxShadow: `0 0 8px ${theme.public_accent}`,
+                  }}
+                />
               </div>
 
 
@@ -2005,10 +1989,11 @@ export default function PublicMenuPage() {
                 <p
                   className="text-[10px] font-black tracking-[.35em]"
                   style={{
-                    color:
-                      theme.public_text,
-                    textShadow:
-                      `0 0 18px ${theme.public_accent}25`,
+                    color: theme.public_accent,
+                    textShadow: `
+                      0 0 8px ${theme.public_accent}45,
+                      0 1px 2px rgba(0,0,0,0.35)
+                    `,
                   }}
                 >
                   NOVAMENU
@@ -4781,25 +4766,17 @@ export default function PublicMenuPage() {
                     />
 
                     <div
-                      className="relative w-14 h-14 rounded-full border flex items-center justify-center"
+                      className="relative w-14 h-14 rounded-full overflow-hidden flex items-center justify-center border"
                       style={{
-                        borderColor:
-                          `${theme.public_accent}80`,
-                        background:
-                          `${theme.public_surface}90`,
-                        boxShadow:
-                          `0 0 40px ${theme.public_accent}15`,
+                        borderColor: `${theme.public_accent}80`,
+                        boxShadow: `0 0 40px ${theme.public_accent}20`,
                       }}
                     >
-
-                      <span
-                        className="font-serif text-xl font-bold"
-                        style={{
-                          color: "#FFFFFF",
-                        }}
-                      >
-                        N
-                      </span>
+                      <img
+                        src="/novamenu-icon.jpeg"
+                        alt="NOVAMENU"
+                        className="h-full w-full object-cover"
+                      />
 
                     </div>
 

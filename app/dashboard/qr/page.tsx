@@ -1309,13 +1309,13 @@ export default function QRStudioPage() {
           <div className="flex items-center gap-3">
 
             <div
-  className="flex h-10 w-10 items-center justify-center rounded-xl text-sm font-black text-white shadow-lg"
-  style={{
-    background: `linear-gradient(135deg, ${palette.accent}, ${palette.text})`,
-  }}
->
-  NS
-</div>
+              className="flex h-10 w-10 items-center justify-center rounded-xl text-sm font-black text-white shadow-lg"
+              style={{
+                background: `linear-gradient(135deg, ${palette.accent}, ${palette.text})`,
+              }}
+            >
+              NS
+            </div>
 
             <div>
 
