@@ -144,7 +144,13 @@ function formatCompactNumber(value: number) {
 }
 
 function formatCurrency(value: number, currency: string) {
-  return `${currency}${value.toFixed(2)}`;
+  const numeric = Number(value);
+
+  if (Number.isInteger(numeric)) {
+    return `${currency}${numeric}`;
+  }
+
+  return `${currency}${numeric.toFixed(2)}`;
 }
 
 export default function DashboardPage() {
@@ -807,7 +813,7 @@ export default function DashboardPage() {
           {[
             {
               label: 'Today revenue',
-              value: `${stats.restaurant.currency}${todayRevenue.toFixed(2)}`,
+              value: formatCurrency(todayRevenue, stats.restaurant.currency),
               detail: `${todayOrders.length} orders today`,
               icon: DollarSign,
             },
@@ -819,7 +825,7 @@ export default function DashboardPage() {
             },
             {
               label: 'Avg order value',
-              value: `${stats.restaurant.currency}${avgOrderValue.toFixed(2)}`,
+              value: formatCurrency(avgOrderValue, stats.restaurant.currency),
               detail: 'Average today',
               icon: BarChart3,
             },
@@ -1831,8 +1837,10 @@ export default function DashboardPage() {
                 </p>
 
                 <p className="text-xl font-black">
-                  {stats.restaurant.currency}
-                  {weeklyRevenue.toFixed(2)}
+                  {formatCurrency(
+                    weeklyRevenue,
+                    stats.restaurant.currency
+                  )}
                 </p>
               </div>
             </div>

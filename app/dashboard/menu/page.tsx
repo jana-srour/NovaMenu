@@ -634,6 +634,16 @@ export default function MenuManagementPage() {
     return roundPrice(Number(item.price) || 0);
   };
 
+  const formatPrice = (price: number) => {
+    const value = Number(price);
+
+    if (Number.isInteger(value)) {
+      return value.toString();
+    }
+
+    return value.toFixed(2);
+  };
+
   const getDiscountedPrice = (
     item: MenuItem
   ) => {
@@ -681,9 +691,9 @@ export default function MenuManagementPage() {
       ).toFixed(0)}%`;
     }
 
-    return `-$${Number(
-      item.discount_value
-    ).toFixed(2)}`;
+    return `-$${formatPrice(
+      Number(item.discount_value)
+    )}`;
   };
 
   // =====================================================
@@ -1629,7 +1639,7 @@ export default function MenuManagementPage() {
 
         if (oldPrice !== newPrice) {
           const direction = newPrice > oldPrice ? 'increase' : 'decrease';
-          const summary = `${editingItem.name}: ${oldPrice.toFixed(2)} → ${newPrice.toFixed(2)} (${direction})`;
+          const summary = `${editingItem.name}: ${formatPrice(oldPrice)} → ${formatPrice(newPrice)} (${direction})`;
 
           await logMenuItemPricingChange(supabase, {
             restaurant_id: restaurantId,
@@ -2549,18 +2559,18 @@ export default function MenuManagementPage() {
                             <>
                               <p className="text-xs text-[#999BA3] line-through">
                                 {restaurantSettings.currency}
-                                {getAdjustedPrice(item).toFixed(2)}
+                                {formatPrice(getAdjustedPrice(item))}
                               </p>
 
                               <span className="px-2.5 py-1 rounded-lg text-sm font-black" style={{ background: 'var(--portal-accent-soft)', color: 'var(--portal-accent)' }}>
                                 {restaurantSettings.currency}
-                                {discountedPrice.toFixed(2)}
+                                {formatPrice(discountedPrice)}
                               </span>
                             </>
                           ) : (
                             <span className="px-2.5 py-1 rounded-lg text-sm font-black" style={{ background: 'var(--portal-accent-soft)', color: 'var(--portal-accent)' }}>
                               {restaurantSettings.currency}
-                              {getAdjustedPrice(item).toFixed(2)}
+                              {formatPrice(getAdjustedPrice(item))}
                             </span>
                           )}
 
@@ -2911,7 +2921,7 @@ export default function MenuManagementPage() {
 
                   <input
                     type="number"
-                    step="0.5"
+                    step="0.01"
                     min="0"
                     required
                     placeholder="0.00"
@@ -3255,7 +3265,7 @@ export default function MenuManagementPage() {
                                 $
                                 {(restaurantSettings.price_adjustment_enabled
                                   ? getAdjustedPriceValue(Number(itemForm.price) || 0)
-                                  : Number(itemForm.price || 0)).toFixed(2)}
+                                  : Number(itemForm.price || 0))}
                               </p>
 
                               <p className="font-serif text-2xl text-[#536DFE]">
@@ -3413,7 +3423,7 @@ export default function MenuManagementPage() {
                                     <input
                                       type="number"
                                       min="0"
-                                      step="0.5"
+                                      step="0.01"
                                       value={roundPrice(option.price)}
                                       onChange={(e) =>
                                         updateItemOption(

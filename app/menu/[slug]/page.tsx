@@ -139,6 +139,13 @@ export default function PublicMenuPage() {
 
   const [feedbackSent, setFeedbackSent] = useState(false);
 
+  const [orderType, setOrderType] = useState<
+    'Delivery' | 'Restaurant'
+  >('Restaurant');
+
+  const [customerAddress, setCustomerAddress] =
+    useState('');
+
   // ==================================================
   // DISCOUNT HELPERS
   // ==================================================
@@ -146,6 +153,16 @@ export default function PublicMenuPage() {
   const getAdjustedPrice = (item: MenuItem) => {
     return Number(item.price) || 0;
   };
+
+  const formatPrice = (price: number) => {
+  const value = Number(price);
+
+  if (Number.isInteger(value)) {
+    return value.toString();
+  }
+
+  return value.toFixed(2);
+};
 
   const isDiscountCurrentlyActive = (
     item: MenuItem
@@ -246,9 +263,9 @@ export default function PublicMenuPage() {
     ) {
       return `SAVE ${
         restaurant?.currency || '$'
-      }${Number(
-        item.discount_value
-      ).toFixed(2)}`;
+      }${formatPrice(
+        Number(item.discount_value)
+      )}`;
     }
 
     return 'SPECIAL OFFER';
@@ -1003,7 +1020,7 @@ export default function PublicMenuPage() {
     // Table is required for internal waiter orders.
     // For WhatsApp we allow it to remain optional.
     if (
-      channel === 'Waiter' &&
+      orderType === 'Restaurant' &&
       !tableNumber.trim()
     ) {
       return {
@@ -1012,22 +1029,39 @@ export default function PublicMenuPage() {
       };
     }
 
-    const { data: order, error: orderError } =
+    if (
+      orderType === 'Delivery' &&
+      !customerAddress.trim()
+    ) {
+      return {
+        success: false,
+        error: 'Please enter your full delivery address.',
+      };
+    }
+
+    const orderId = crypto.randomUUID();
+
+    const { error: orderError } =
       await supabase
         .from('orders')
         .insert({
+          id: orderId,
           restaurant_id: restaurant.id,
           customer_name: 'Guest',
           table_number:
-            tableNumber.trim() || null,
+            orderType === 'Restaurant'
+              ? tableNumber.trim()
+              : null,
+          customer_address:
+            orderType === 'Delivery'
+              ? customerAddress.trim()
+              : null,
           status: 'New',
           channel,
           total: totalPrice,
-        })
-        .select('id')
-        .single();
+        });
 
-    if (orderError || !order) {
+    if (orderError) {
       console.error(
         'Order creation error:',
         orderError
@@ -1053,7 +1087,7 @@ export default function PublicMenuPage() {
           : '';
 
       return {
-        order_id: order.id,
+        order_id: orderId,
         item_name:
           `${item.name}${extrasText}`,
         quantity: item.quantity,
@@ -1078,7 +1112,7 @@ export default function PublicMenuPage() {
       await supabase
         .from('orders')
         .delete()
-        .eq('id', order.id);
+        .eq('id', orderId);
 
       return {
         success: false,
@@ -1090,7 +1124,7 @@ export default function PublicMenuPage() {
 
     return {
       success: true,
-      orderId: order.id,
+      orderId,
     };
   };
 
@@ -1146,18 +1180,17 @@ export default function PublicMenuPage() {
             : '';
 
         const priceText =
-          `${restaurant.currency}${(
-            finalPrice * item.quantity
-          ).toFixed(2)}`;
+        `${restaurant.currency}${formatPrice(
+          finalPrice * item.quantity
+        )}`;
 
         if (activeDiscount) {
           return (
             `${item.quantity}x ${item.name}${extrasText} — ` +
             `${priceText} ` +
-            `(was ${restaurant.currency}${(
-              originalPrice *
-              item.quantity
-            ).toFixed(2)})`
+            `(was ${restaurant.currency}${formatPrice(
+                originalPrice * item.quantity
+              )})`
           );
         }
 
@@ -1170,14 +1203,14 @@ export default function PublicMenuPage() {
 
     const message =
       `*New Order - ${restaurant.name}*\n\n` +
-      (tableNumber
-        ? `*Table:* ${tableNumber}\n\n`
-        : '') +
+      (orderType === 'Restaurant'
+        ? `*Order Type:* Inside Restaurant\n*Table:* ${tableNumber}\n\n`
+        : `*Order Type:* Delivery\n*Address:* ${customerAddress}\n\n`) +
       `*Order ID:* ${result.orderId}\n\n` +
       `*Order:*\n${items}\n\n` +
       `*Total:* ${
         restaurant.currency
-      }${totalPrice.toFixed(2)}`;
+      }${formatPrice(totalPrice)}`;
 
     const phone =
       restaurant.whatsapp_number.replace(
@@ -1195,6 +1228,7 @@ export default function PublicMenuPage() {
     // Clear after successful order creation
     setCart([]);
     setTableNumber('');
+    setCustomerAddress('');
     setShowOrderPopup(false);
   };
 
@@ -3880,9 +3914,7 @@ export default function PublicMenuPage() {
                           }}
                         >
                           {restaurant.currency}
-                          {Number(
-                            extra.price || 0
-                          ).toFixed(2)}{" "}
+                          {formatPrice(Number(extra.price || 0))}{" "}
                           each
                         </p>
 
@@ -4019,21 +4051,15 @@ export default function PublicMenuPage() {
                   }}
                 >
                   {restaurant.currency}
-                  {selectedExtrasList
-                    .reduce(
+                  {formatPrice(
+                    selectedExtrasList.reduce(
                       (sum, extra) =>
                         sum +
-                        Number(
-                          extra.price || 0
-                        ) *
-                          Number(
-                            selectedExtras[
-                              extra.id
-                            ] || 0
-                          ),
+                        Number(extra.price || 0) *
+                          Number(selectedExtras[extra.id] || 0),
                       0
                     )
-                    .toFixed(2)}
+                  )}
                 </span>
 
               </div>
@@ -4366,12 +4392,10 @@ export default function PublicMenuPage() {
                                           }}
                                         >
                                           {restaurant.currency}
-                                          {(
-                                            getCartLinePrice(
-                                              item
-                                            ) *
-                                            item.quantity
-                                          ).toFixed(2)}
+                                          {formatPrice(
+                                            getCartLinePrice(item) *
+                                              item.quantity
+                                          )}
                                         </p>
 
 
@@ -4477,7 +4501,7 @@ export default function PublicMenuPage() {
                                   }}
                                 >
                                   {restaurant.currency}
-                                  {totalPrice.toFixed(2)}
+                                  {formatPrice(totalPrice)}
                                 </span>
 
                               </div>
@@ -4513,13 +4537,6 @@ export default function PublicMenuPage() {
                                 <button
                                   type="button"
                                   onClick={async () => {
-                                    if (!tableNumber.trim()) {
-                                      alert(
-                                        'Please enter the table number.'
-                                      );
-                                      return;
-                                    }
-
                                     const result =
                                       await createDatabaseOrder(
                                         'Waiter'
@@ -4536,6 +4553,7 @@ export default function PublicMenuPage() {
                                     // Clear cart after successful submission
                                     setCart([]);
                                     setTableNumber('');
+                                    setCustomerAddress('');
                                     setShowOrderPopup(false);
 
                                     alert(
@@ -4577,9 +4595,8 @@ export default function PublicMenuPage() {
                               </div>
 
                             </div>
-
-
-                            {/* TABLE NUMBER */}
+                            
+                            {/* ORDER TYPE */}
 
                             <div className="mt-3">
                               <label
@@ -4588,25 +4605,111 @@ export default function PublicMenuPage() {
                                   color: "rgba(255,255,255,0.68)",
                                 }}
                               >
-                                Table Number
+                                Order Type
                               </label>
 
-                              <input
-                                value={tableNumber}
-                                onChange={(e) =>
-                                  setTableNumber(e.target.value)
-                                }
-                                placeholder="e.g. 2"
-                                inputMode="numeric"
-                                className="w-full h-10 px-3 rounded-xl border outline-none text-[10px]"
+                              <div className="grid grid-cols-2 gap-2">
+                                <button
+                                  type="button"
+                                  onClick={() => setOrderType('Restaurant')}
+                                  className="h-10 rounded-xl border text-[9px] uppercase tracking-[.12em] font-black transition-all"
+                                  style={{
+                                    borderColor:
+                                      orderType === 'Restaurant'
+                                        ? `${theme.public_accent}80`
+                                        : `${theme.public_border}50`,
+                                    background:
+                                      orderType === 'Restaurant'
+                                        ? `${theme.public_accent}18`
+                                        : "rgba(255,255,255,0.035)",
+                                    color:
+                                      orderType === 'Restaurant'
+                                        ? theme.public_accent
+                                        : "rgba(255,255,255,0.65)",
+                                  }}
+                                >
+                                  🍽️ Inside Restaurant
+                                </button>
+
+                                <button
+                                  type="button"
+                                  onClick={() => setOrderType('Delivery')}
+                                  className="h-10 rounded-xl border text-[9px] uppercase tracking-[.12em] font-black transition-all"
+                                  style={{
+                                    borderColor:
+                                      orderType === 'Delivery'
+                                        ? `${theme.public_accent}80`
+                                        : `${theme.public_border}50`,
+                                    background:
+                                      orderType === 'Delivery'
+                                        ? `${theme.public_accent}18`
+                                        : "rgba(255,255,255,0.035)",
+                                    color:
+                                      orderType === 'Delivery'
+                                        ? theme.public_accent
+                                        : "rgba(255,255,255,0.65)",
+                                  }}
+                                >
+                                  🏠 Delivery
+                                </button>
+                              </div>
+                            </div>
+
+                            {/* ORDER DETAILS */}
+
+                            <div className="mt-3">
+
+                              <label
+                                className="block mb-1.5 text-[8px] uppercase tracking-[.2em] font-black"
                                 style={{
-                                  background:
-                                    "rgba(255,255,255,0.045)",
-                                  color: "#FFFFFF",
-                                  borderColor:
-                                    `${theme.public_border}75`,
+                                  color: "rgba(255,255,255,0.68)",
                                 }}
-                              />
+                              >
+                                {orderType === 'Restaurant'
+                                  ? 'Table Number'
+                                  : 'Delivery Address'}
+                              </label>
+
+                              {orderType === 'Restaurant' ? (
+
+                                <input
+                                  value={tableNumber}
+                                  onChange={(e) =>
+                                    setTableNumber(e.target.value)
+                                  }
+                                  placeholder="e.g. 2"
+                                  inputMode="numeric"
+                                  className="w-full h-10 px-3 rounded-xl border outline-none text-[10px]"
+                                  style={{
+                                    background:
+                                      "rgba(255,255,255,0.045)",
+                                    color: "#FFFFFF",
+                                    borderColor:
+                                      `${theme.public_border}75`,
+                                  }}
+                                />
+
+                              ) : (
+
+                                <textarea
+                                  value={customerAddress}
+                                  onChange={(e) =>
+                                    setCustomerAddress(e.target.value)
+                                  }
+                                  placeholder="Enter your full delivery address..."
+                                  rows={3}
+                                  className="w-full px-3 py-2.5 rounded-xl border outline-none text-[10px] resize-none"
+                                  style={{
+                                    background:
+                                      "rgba(255,255,255,0.045)",
+                                    color: "#FFFFFF",
+                                    borderColor:
+                                      `${theme.public_border}75`,
+                                  }}
+                                />
+
+                              )}
+
                             </div>
 
 
@@ -4638,9 +4741,12 @@ export default function PublicMenuPage() {
 
                       <button
                         type="button"
-                        onClick={() =>
-                          setShowOrderPopup(true)
-                        }
+                        onClick={() => {
+                          setOrderType('Restaurant');
+                          setTableNumber('');
+                          setCustomerAddress('');
+                          setShowOrderPopup(true);
+                        }}
                         className="group flex items-center gap-3 px-5 py-3.5 rounded-full border backdrop-blur-xl shadow-2xl transition-all hover:-translate-y-1"
                         style={{
                           background:
@@ -4686,7 +4792,7 @@ export default function PublicMenuPage() {
                           }}
                         >
                           {restaurant.currency}
-                          {totalPrice.toFixed(2)}
+                          {formatPrice(totalPrice)}
                         </span>
 
 

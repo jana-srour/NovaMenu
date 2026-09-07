@@ -25,9 +25,17 @@ export default function SignUpPage() {
   const [errorMsg, setErrorMsg] = useState('');
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  const [acceptedTerms, setAcceptedTerms] = useState(false);
 
   const handleSignUp = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
+    
+    if (!acceptedTerms) {
+      setErrorMsg(
+        'Please accept the Terms of Service and Privacy Policy before creating your workspace.'
+      );
+      return;
+    }
 
     setLoading(true);
     setErrorMsg('');
@@ -1023,12 +1031,110 @@ export default function SignUpPage() {
 
 
                   {/* ================================================= */}
+                  {/* TERMS & CONDITIONS */}
+                  {/* ================================================= */}
+
+                  <div className="pt-1">
+
+                    <label
+                      htmlFor="acceptedTerms"
+                      className="
+                        group
+                        flex
+                        items-start
+                        gap-3
+                        cursor-pointer
+                        select-none
+                      "
+                    >
+
+                      <input
+                        id="acceptedTerms"
+                        type="checkbox"
+                        checked={acceptedTerms}
+                        onChange={(e) => {
+                          setAcceptedTerms(e.target.checked);
+
+                          if (e.target.checked) {
+                            setErrorMsg('');
+                          }
+                        }}
+                        className="sr-only"
+                      />
+
+                      <span
+                        className={`
+                          relative
+                          mt-0.5
+                          shrink-0
+                          w-5
+                          h-5
+                          rounded-md
+                          border
+                          flex
+                          items-center
+                          justify-center
+                          transition-all
+                          duration-200
+                          ${
+                            acceptedTerms
+                              ? 'border-[#C9A76A] bg-[#C9A76A] shadow-[0_0_15px_rgba(201,167,106,0.18)]'
+                              : 'border-white/[0.14] bg-white/[0.025] group-hover:border-[#C9A76A]/50 group-hover:bg-[#C9A76A]/[0.04]'
+                          }
+                        `}
+                      >
+
+                        {acceptedTerms && (
+                          <svg
+                            viewBox="0 0 24 24"
+                            className="w-3.5 h-3.5 text-[#14120E]"
+                            fill="none"
+                            stroke="currentColor"
+                            strokeWidth="3"
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                          >
+                            <path d="M5 12l4 4L19 7" />
+                          </svg>
+                        )}
+
+                      </span>
+
+                      <span className="text-[10px] leading-5 text-white/35">
+                        I agree to the{' '}
+                        <a
+                          href="/terms"
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          onClick={(e) => e.stopPropagation()}
+                          className="font-semibold text-[#C9A76A] hover:text-[#E2C98F] hover:underline transition-colors"
+                        >
+                          Terms of Service
+                        </a>{' '}
+                        and{' '}
+                        <a
+                          href="/privacy"
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          onClick={(e) => e.stopPropagation()}
+                          className="font-semibold text-[#C9A76A] hover:text-[#E2C98F] hover:underline transition-colors"
+                        >
+                          Privacy Policy
+                        </a>
+                        .
+                      </span>
+
+                    </label>
+
+                  </div>
+
+                  {/* ================================================= */}
                   {/* CREATE WORKSPACE BUTTON */}
                   {/* ================================================= */}
 
                   <button
                     type="submit"
-                    disabled={loading}
+                    disabled={loading || !acceptedTerms}
                     className="
                       group
                       relative
@@ -1049,8 +1155,9 @@ export default function SignUpPage() {
                       active:scale-[0.99]
                       transition-all
                       duration-300
-                      disabled:opacity-50
+                      disabled:opacity-40
                       disabled:cursor-not-allowed
+                      disabled:hover:shadow-[0_12px_35px_rgba(201,167,106,0.15)]
                     "
                   >
 

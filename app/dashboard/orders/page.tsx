@@ -8,8 +8,36 @@ import { PlanRequired } from '@/app/dashboard/components/plan-required';
 import { subscriptionAllows, type BillingPlan, type SubscriptionStatus } from '@/lib/billing/plans';
 
 type OrderStatus = 'New' | 'Preparing' | 'Ready' | 'Delivered';
-type Order = { id: string; customer: string; table: string; status: OrderStatus; channel: string; total: number; createdAt: string; items: { name: string; qty: number; price: number }[] };
-type OrderRow = { id: string; customer_name: string | null; table_number: string | null; status: OrderStatus; channel: string; total: number; created_at: string; order_items: { item_name: string; quantity: number; unit_price: number }[] };
+type Order = {
+  id: string;
+  customer: string;
+  table: string;
+  address: string;
+  status: OrderStatus;
+  channel: string;
+  total: number;
+  createdAt: string;
+  items: {
+    name: string;
+    qty: number;
+    price: number;
+  }[];
+};
+type OrderRow = {
+  id: string;
+  customer_name: string | null;
+  table_number: string | null;
+  customer_address: string | null;
+  status: OrderStatus;
+  channel: string;
+  total: number;
+  created_at: string;
+  order_items: {
+    item_name: string;
+    quantity: number;
+    unit_price: number;
+  }[];
+};
 
 const statuses: OrderStatus[] = ['New', 'Preparing', 'Ready', 'Delivered'];
 const statusStyles: Record<OrderStatus, string> = {
@@ -32,8 +60,32 @@ const getStatusAccent = (status: OrderStatus) => {
   }
 };
 
+const formatPrice = (price: number) => {
+  const value = Number(price);
+
+  if (Number.isInteger(value)) {
+    return value.toString();
+  }
+
+  return value.toFixed(2);
+};
+
 function mapOrder(row: OrderRow): Order {
-  return { id: row.id, customer: row.customer_name || 'Guest', table: row.table_number || 'Pickup', status: row.status, channel: row.channel, total: Number(row.total), createdAt: new Date(row.created_at).toLocaleString(), items: (row.order_items || []).map((item) => ({ name: item.item_name, qty: item.quantity, price: Number(item.unit_price) })) };
+  return {
+    id: row.id,
+    customer: row.customer_name || 'Guest',
+    table: row.table_number || '',
+    address: row.customer_address || '',
+    status: row.status,
+    channel: row.channel,
+    total: Number(row.total),
+    createdAt: new Date(row.created_at).toLocaleString(),
+    items: (row.order_items || []).map((item) => ({
+      name: item.item_name,
+      qty: item.quantity,
+      price: Number(item.unit_price),
+    })),
+  };
 }
 
 export default function OrdersPage() {
@@ -46,7 +98,8 @@ export default function OrdersPage() {
   const [planAllowed, setPlanAllowed] = useState(true);
 
   const loadOrders = useCallback(async (id: string) => {
-    const { data, error: queryError } = await supabase.from('orders').select('id, customer_name, table_number, status, channel, total, created_at, order_items(item_name, quantity, unit_price)').eq('restaurant_id', id).order('created_at', { ascending: false });
+    const { data, error: queryError } = await supabase.from('orders')
+        .select('id, customer_name, table_number, customer_address, status, channel, total, created_at, order_items(item_name, quantity, unit_price)')
     if (queryError) { setError(queryError.message); return; }
     setOrders(((data || []) as OrderRow[]).map(mapOrder));
   }, []);
@@ -148,7 +201,7 @@ export default function OrdersPage() {
   }
 
   return <div className="min-h-screen" style={{ background: 'var(--portal-background)', color: 'var(--portal-text)' }}><main className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
-    <header className="mb-7 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between"><div><p className="text-[9px] font-black uppercase tracking-[0.2em]" style={{ color: 'var(--portal-accent)' }}>Live orders</p><h1 className="mt-2 text-3xl font-black tracking-tight sm:text-4xl">Orders Management</h1><p className="mt-2 text-sm" style={{ color: 'var(--portal-text)' }}>Every order is synchronized with the restaurant database.</p></div><div className="rounded-2xl border px-4 py-3" style={{ borderColor: 'var(--portal-border)', background: 'var(--portal-surface)' }}><p className="text-[9px] font-black uppercase tracking-[0.16em]" style={{ color: 'var(--portal-text)' }}>Tracked sales</p><p className="mt-1 text-xl font-black">{currency}{revenue.toFixed(2)}</p></div></header>
+    <header className="mb-7 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between"><div><p className="text-[9px] font-black uppercase tracking-[0.2em]" style={{ color: 'var(--portal-accent)' }}>Live orders</p><h1 className="mt-2 text-3xl font-black tracking-tight sm:text-4xl">Orders Management</h1><p className="mt-2 text-sm" style={{ color: 'var(--portal-text)' }}>Every order is synchronized with the restaurant database.</p></div><div className="rounded-2xl border px-4 py-3" style={{ borderColor: 'var(--portal-border)', background: 'var(--portal-surface)' }}><p className="text-[9px] font-black uppercase tracking-[0.16em]" style={{ color: 'var(--portal-text)' }}>Tracked sales</p><p className="mt-1 text-xl font-black">{currency}{formatPrice(revenue)}</p></div></header>
     {error && <div className="mb-5 rounded-xl border p-3 text-sm" style={{ borderColor: 'var(--portal-border)', background: 'var(--portal-surface)', color: 'var(--portal-text)' }}>{error}</div>}
     <section className="mb-6 grid grid-cols-2 gap-4 xl:grid-cols-4">{statuses.map((status) => <div key={status} className="rounded-2xl border p-5 shadow-sm" style={{ borderColor: 'var(--portal-border)', background: 'var(--portal-surface)', color: 'var(--portal-text)' }}><p className="text-[9px] font-black uppercase tracking-[0.16em]" style={{ color: 'var(--portal-text)' }}>{status}</p><p className="mt-4 text-3xl font-black">{orders.filter((order) => order.status === status).length}</p><p className="mt-1 text-xs" style={{ color: 'var(--portal-text)' }}>Orders in this stage</p></div>)}</section>
     <section className="rounded-3xl border p-4 shadow-sm sm:p-6" style={{ borderColor: 'var(--portal-border)', background: 'var(--portal-surface)' }}><div className="mb-5 flex flex-wrap gap-2">{(['All', ...statuses] as const).map((option) => <button key={option} type="button" onClick={() => setFilter(option)} className="rounded-full px-3 py-2 text-[10px] font-black uppercase tracking-[0.14em]" style={{ background: filter === option ? 'var(--portal-accent)' : 'var(--portal-background)', color: filter === option ? '#fff' : 'var(--portal-text)' }}>{option}</button>)}</div><div className="space-y-4">{visibleOrders.length === 0 && <div className="rounded-2xl border border-dashed p-10 text-center text-sm" style={{ borderColor: 'var(--portal-border)', color: 'var(--portal-text)' }}>No orders in this view.</div>}{visibleOrders.map((order) => <article key={order.id} className="rounded-2xl border p-4" style={{ borderColor: 'var(--portal-border)', background: 'var(--portal-background)' }}><div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between"><div><div className="flex items-center gap-3"><strong className="text-sm tracking-[0.1em]">{order.id}</strong><span
@@ -160,7 +213,23 @@ export default function OrdersPage() {
   }}
 >
   {order.status}
-</span></div><p className="mt-2 text-xs" style={{ color: 'var(--portal-text)' }}>{order.customer} . {order.table} . {order.channel} . {order.createdAt}</p></div><div className="flex items-center gap-4"><strong>{currency}{order.total.toFixed(2)}</strong><select
+</span></div>
+<div className="mt-2 space-y-1 text-xs" style={{ color: 'var(--portal-text)' }}>
+  <p>
+    {order.customer} · {order.channel} · {order.createdAt}
+  </p>
+
+  {order.address ? (
+    <p className="font-semibold">
+      📍 Delivery: {order.address}
+    </p>
+  ) : order.table ? (
+    <p className="font-semibold">
+      🍽️ Table: {order.table}
+    </p>
+  ) : null}
+</div>
+</div><div className="flex items-center gap-4"><strong>{currency}{formatPrice(order.total)}</strong><select
   value={order.status}
   onChange={(event) => updateStatus(order.id, event.target.value as OrderStatus)}
   className="rounded-xl border px-3 py-2 text-xs font-bold outline-none"
@@ -177,7 +246,7 @@ export default function OrdersPage() {
     background: 'var(--portal-surface)',
     color: 'var(--portal-text)',
   }}
-><span>{item.qty}x {item.name}</span><span className="font-bold">{currency}{(item.qty * item.price).toFixed(2)}</span></div>)}</div></article>)}</div></section>
+><span>{item.qty}x {item.name}</span><span className="font-bold">{currency}{formatPrice(item.qty * item.price)}</span></div>)}</div></article>)}</div></section>
   </main></div>;
 }
 

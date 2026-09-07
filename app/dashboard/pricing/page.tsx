@@ -207,7 +207,7 @@ export default function PricingPromotionsPage() {
         return `${numeric.toFixed(2)}%`;
       }
 
-      return `${restaurantSettings.currency || 'USD'}${numeric.toFixed(2)}`;
+      return `${restaurantSettings.currency || 'USD'}${Number.isInteger(numeric) ? numeric.toString() : numeric.toFixed(2)}`;
     }
 
     return String(value);
@@ -523,7 +523,7 @@ export default function PricingPromotionsPage() {
           discount_value: Number(value) || 0,
           discount_type: entry.discount_type || 'percentage',
           discount_label: entry.discount_type === 'fixed'
-            ? `${restaurantSettings.currency || 'USD'}${Number(value) || 0} off`
+            ? `${restaurantSettings.currency || 'USD'}${Number.isInteger(Number(value)) ? Number(value).toString() : Number(value).toFixed(2)} off`
             : `${Number(value) || 0}% off`,
           status,
           start_at: startAt,
@@ -771,7 +771,7 @@ export default function PricingPromotionsPage() {
         direction: markupDirection,
         old_price: item.oldPrice,
         new_price: item.newPrice,
-        summary: `${item.name}: ${item.oldPrice.toFixed(2)} → ${item.newPrice.toFixed(2)}`,
+        summary: `${item.name}: ${formatHistoryValue(item.oldPrice)} → ${formatHistoryValue(item.newPrice)}`,
         details: {
           source: 'one-time-price-adjustment',
           adjustment_mode: markupMode,
@@ -907,7 +907,12 @@ export default function PricingPromotionsPage() {
 
                 <div>
                   <label className="mb-2 block text-[9px] font-black uppercase tracking-[0.16em]" style={{ color: `${theme.portal_text}70` }}>Value</label>
-                  <input type="number" value={markupValue} onChange={(e) => setMarkupValue(e.target.value)} className="w-full rounded-2xl border border-[#E7E4DE] bg-[#F7F5F1] px-4 py-3 text-sm text-[#202534] outline-none transition focus:border-[#536DFE] focus:ring-4 focus:ring-[#536DFE]/10" />
+                  <input
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    value={markupValue}
+                    onChange={(e) => setMarkupValue(e.target.value)} className="w-full rounded-2xl border border-[#E7E4DE] bg-[#F7F5F1] px-4 py-3 text-sm text-[#202534] outline-none transition focus:border-[#536DFE] focus:ring-4 focus:ring-[#536DFE]/10" />
                 </div>
 
                 <div className="rounded-2xl border p-4 text-sm" style={{ background: theme.portal_background, borderColor: theme.portal_border }}>
