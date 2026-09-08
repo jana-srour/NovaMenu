@@ -91,16 +91,6 @@ export async function POST(request: Request) {
       );
     }
 
-    const requestBody: {
-      subscription_ids?: string[];
-    } = {};
-
-    if (subscription.provider_subscription_id) {
-      requestBody.subscription_ids = [
-        subscription.provider_subscription_id,
-      ];
-    }
-
     const paddleResponse = await fetch(
       `${PADDLE_API_URL}/customers/${subscription.provider_customer_id}/portal-sessions`,
       {
@@ -109,7 +99,7 @@ export async function POST(request: Request) {
           Authorization: `Bearer ${process.env.PADDLE_API_KEY}`,
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify(requestBody),
+        body: undefined,
       }
     );
 

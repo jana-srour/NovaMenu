@@ -249,6 +249,16 @@ export default function BillingPage() {
         );
       }
 
+      if (data.updated) {
+        setLoading(false);
+
+        alert(
+          'Your subscription has been updated successfully.'
+        );
+
+        return;
+      }
+
       if (!data.transactionId) {
         throw new Error(
           'Paddle Checkout transaction was not returned.'

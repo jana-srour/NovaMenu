@@ -116,6 +116,80 @@ export async function POST(request: Request) {
 
     const priceId = priceMap[plan][billingCycle];
 
+    const { data: existingSubscription, error: subscriptionError } =
+      await supabase
+        .from('restaurant_subscriptions')
+        .select(
+          'provider_subscription_id, provider_customer_id, plan_code, status, billing_interval'
+        )
+        .eq('restaurant_id', restaurant.id)
+        .maybeSingle();
+
+    if (subscriptionError) {
+      console.error(
+        'Failed to load restaurant subscription:',
+        subscriptionError
+      );
+
+      return NextResponse.json(
+        {
+          error: 'Unable to load the current subscription.',
+        },
+        { status: 500 }
+      );
+    }
+
+    if (
+      existingSubscription?.provider_subscription_id &&
+      existingSubscription.status === 'active'
+    ) {
+      const paddleResponse = await fetch(
+        `${PADDLE_API_URL}/subscriptions/${existingSubscription.provider_subscription_id}`,
+        {
+          method: 'PATCH',
+          headers: {
+            Authorization: `Bearer ${process.env.PADDLE_API_KEY}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            items: [
+              {
+                price_id: priceId,
+                quantity: 1,
+              },
+            ],
+            proration_billing_mode: 'prorated_immediately',
+          }),
+        }
+      );
+
+      const paddleData = await paddleResponse.json();
+
+      if (!paddleResponse.ok) {
+        console.error(
+          'Paddle subscription update failed:',
+          paddleData
+        );
+
+        return NextResponse.json(
+          {
+            error:
+              paddleData?.error?.detail ||
+              paddleData?.error?.message ||
+              'Unable to update Paddle subscription.',
+          },
+          { status: 502 }
+        );
+      }
+
+      return NextResponse.json({
+        updated: true,
+        subscriptionId:
+          paddleData?.data?.id ||
+          existingSubscription.provider_subscription_id,
+      });
+    }
+
     /*
      * Create the Paddle transaction server-side.
      *
