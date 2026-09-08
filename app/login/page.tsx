@@ -817,24 +817,17 @@ export default function LoginPage() {
                         w-11
                         h-11
                         rounded-xl
-                        flex
-                        items-center
-                        justify-center
                         overflow-hidden
                         border
                         border-[#C9A76A]/25
                         shadow-[0_0_30px_rgba(201,167,106,0.12)]
                       "
                     >
-
-                      <div className="absolute inset-0 bg-gradient-to-br from-[#C9A76A] to-[#73562F]" />
-
-                      <div className="absolute -top-3 -right-3 w-7 h-7 rounded-full bg-white/25 blur-md" />
-
-                      <span className="relative text-[#11100D] font-black">
-                        N
-                      </span>
-
+                      <img
+                        src="/novamenu-icon.jpeg"
+                        alt="NOVAMENU"
+                        className="h-full w-full object-contain"
+                      />
                     </div>
 
                   </div>
@@ -1242,22 +1235,21 @@ export default function LoginPage() {
 
                 <div
                   className="
+                    relative
                     w-6
                     h-6
                     rounded-lg
-                    bg-gradient-to-br
-                    from-[#C9A76A]
-                    to-[#73562F]
-                    flex
-                    items-center
-                    justify-center
+                    overflow-hidden
+                    border
+                    border-[#C9A76A]/25
+                    shadow-[0_0_20px_rgba(201,167,106,0.10)]
                   "
                 >
-
-                  <span className="text-[9px] font-black text-[#11100D]">
-                    N
-                  </span>
-
+                  <img
+                    src="/novamenu-icon.jpeg"
+                    alt="NOVAMENU"
+                    className="h-full w-full object-contain"
+                  />
                 </div>
 
                 <span className="text-[9px] font-bold tracking-[0.2em] text-white/25">
