@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { Paddle } from '@paddle/paddle-node-sdk';
+import { deleteRestaurantCompletely } from '@/lib/server/delete-restaurant';
 
 export const runtime = 'nodejs';
 
@@ -368,30 +369,84 @@ export async function POST(request: Request) {
           break;
         }
 
-        const { error } = await supabase
-          .from('restaurant_subscriptions')
-          .update({
-            status: 'canceled',
-            updated_at:
-              new Date().toISOString(),
-          })
-          .eq(
-            'restaurant_id',
-            restaurantId
+        const { data: restaurantSubscription, error: lookupError } =
+          await supabase
+            .from('restaurant_subscriptions')
+            .select(
+              `
+                id,
+                deletion_requested_at,
+                deletion_scheduled_at
+              `
+            )
+            .eq('restaurant_id', restaurantId)
+            .maybeSingle();
+
+        if (lookupError) {
+          console.error(
+            'Failed to load restaurant deletion state:',
+            lookupError
           );
 
-        if (error) {
+          throw lookupError;
+        }
+
+        /*
+        * Always synchronize Paddle's final subscription state.
+        */
+        const { error: updateError } =
+          await supabase
+            .from('restaurant_subscriptions')
+            .update({
+              status: 'canceled',
+              updated_at:
+                new Date().toISOString(),
+            })
+            .eq('restaurant_id', restaurantId);
+
+        if (updateError) {
           console.error(
             'Failed to cancel restaurant subscription:',
-            error
+            updateError
           );
 
-          throw error;
+          throw updateError;
         }
 
         console.log(
           `Paddle subscription canceled: restaurant=${restaurantId}`
         );
+
+        /*
+        * Only permanently delete the restaurant when the owner
+        * explicitly requested account deactivation.
+        */
+        if (
+          restaurantSubscription?.deletion_requested_at &&
+          restaurantSubscription?.deletion_scheduled_at
+        ) {
+          const scheduledAt = new Date(
+            restaurantSubscription.deletion_scheduled_at
+          );
+
+          if (scheduledAt <= new Date()) {
+            console.log(
+              `Deleting deactivated restaurant: ${restaurantId}`
+            );
+
+            await deleteRestaurantCompletely(
+              restaurantId
+            );
+
+            console.log(
+              `Restaurant deletion completed: ${restaurantId}`
+            );
+          } else {
+            console.log(
+              `Restaurant deletion is scheduled for ${scheduledAt.toISOString()}`
+            );
+          }
+        }
 
         break;
       }

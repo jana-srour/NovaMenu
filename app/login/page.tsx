@@ -5,7 +5,7 @@ export const dynamic = 'force-dynamic';
 import { useState } from 'react';
 import type { FormEvent } from 'react';
 import { useRouter } from 'next/navigation';
-import { supabase } from '@/lib/supabase';
+import { supabase, REMEMBER_ME_KEY } from '@/lib/supabase';
 
 export default function LoginPage() {
   const router = useRouter();
@@ -15,6 +15,40 @@ export default function LoginPage() {
   const [errorMsg, setErrorMsg] = useState('');
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  const [rememberMe, setRememberMe] = useState(true);
+
+  const handleRememberMeChange = (checked: boolean) => {
+    setRememberMe(checked);
+
+    if (typeof window === 'undefined') {
+      return;
+    }
+
+    /*
+     * Clear both storage locations when switching preference.
+     *
+     * This prevents an old persistent session from remaining in
+     * localStorage when the user chooses session-only login.
+     */
+    const authStorageKeyPrefix = 'sb-';
+
+    Object.keys(window.localStorage).forEach((key) => {
+      if (key.startsWith(authStorageKeyPrefix)) {
+        window.localStorage.removeItem(key);
+      }
+    });
+
+    Object.keys(window.sessionStorage).forEach((key) => {
+      if (key.startsWith(authStorageKeyPrefix)) {
+        window.sessionStorage.removeItem(key);
+      }
+    });
+
+    window.localStorage.setItem(
+      REMEMBER_ME_KEY,
+      checked ? 'true' : 'false'
+    );
+  };
 
   const handleLogin = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -23,6 +57,17 @@ export default function LoginPage() {
     setErrorMsg('');
 
     try {
+      /*
+       * Make sure the storage preference is set BEFORE Supabase
+       * creates the authenticated session.
+       */
+      if (typeof window !== 'undefined') {
+        window.localStorage.setItem(
+          REMEMBER_ME_KEY,
+          rememberMe ? 'true' : 'false'
+        );
+      }
+
       // 1. Authenticate user credentials
       const { data: authData, error: authError } =
         await supabase.auth.signInWithPassword({
@@ -53,6 +98,9 @@ export default function LoginPage() {
 
       if (memberError) {
         setErrorMsg(memberError.message);
+
+        await supabase.auth.signOut();
+
         setLoading(false);
         return;
       }
@@ -61,6 +109,9 @@ export default function LoginPage() {
         setErrorMsg(
           'Access denied: Account is not associated with any restaurant.'
         );
+
+        await supabase.auth.signOut();
+
         setLoading(false);
         return;
       }
@@ -176,7 +227,6 @@ export default function LoginPage() {
 
       </div>
 
-
       {/* ========================================================= */}
       {/* TOP BAR */}
       {/* ========================================================= */}
@@ -239,7 +289,6 @@ export default function LoginPage() {
 
         </div>
 
-
         {/* STATUS */}
         <div
           className="
@@ -273,7 +322,6 @@ export default function LoginPage() {
 
       </header>
 
-
       {/* ========================================================= */}
       {/* MAIN */}
       {/* ========================================================= */}
@@ -297,7 +345,6 @@ export default function LoginPage() {
       >
 
         <div className="w-full grid lg:grid-cols-12 gap-12 xl:gap-20 items-center">
-
 
           {/* ===================================================== */}
           {/* LEFT SIDE */}
@@ -332,7 +379,6 @@ export default function LoginPage() {
                 </span>
 
               </div>
-
 
               {/* HEADLINE */}
 
@@ -373,7 +419,6 @@ export default function LoginPage() {
 
               </div>
 
-
               {/* ================================================= */}
               {/* PREMIUM DASHBOARD PREVIEW */}
               {/* ================================================= */}
@@ -396,7 +441,6 @@ export default function LoginPage() {
                   }}
                 />
 
-
                 {/* WINDOW */}
 
                 <div
@@ -412,10 +456,7 @@ export default function LoginPage() {
                   "
                 >
 
-                  {/* Top line */}
-
                   <div className="h-[2px] bg-gradient-to-r from-transparent via-[#C9A76A]/60 to-transparent" />
-
 
                   {/* Window header */}
 
@@ -447,7 +488,6 @@ export default function LoginPage() {
 
                     </div>
 
-
                     <div className="flex items-center gap-2">
 
                       <span className="w-1.5 h-1.5 rounded-full bg-[#6EE7B7] shadow-[0_0_10px_rgba(110,231,183,0.7)]" />
@@ -459,7 +499,6 @@ export default function LoginPage() {
                     </div>
 
                   </div>
-
 
                   {/* Dashboard content */}
 
@@ -485,7 +524,6 @@ export default function LoginPage() {
 
                       </div>
 
-
                       {/* KPI 2 */}
 
                       <div className="rounded-xl border border-white/[0.06] bg-white/[0.025] p-4">
@@ -503,7 +541,6 @@ export default function LoginPage() {
                         </div>
 
                       </div>
-
 
                       {/* KPI 3 */}
 
@@ -524,7 +561,6 @@ export default function LoginPage() {
                       </div>
 
                     </div>
-
 
                     {/* GRAPH */}
 
@@ -550,10 +586,7 @@ export default function LoginPage() {
 
                       </div>
 
-
                       <div className="h-[105px] relative">
-
-                        {/* Grid */}
 
                         <div className="absolute inset-0 flex flex-col justify-between">
 
@@ -563,9 +596,6 @@ export default function LoginPage() {
                           <div className="border-t border-white/[0.035]" />
 
                         </div>
-
-
-                        {/* SVG GRAPH */}
 
                         <svg
                           viewBox="0 0 700 120"
@@ -611,12 +641,10 @@ export default function LoginPage() {
 
                           </defs>
 
-
                           <path
                             d="M0 95 C55 92 70 75 120 80 C165 85 180 55 225 62 C270 69 295 42 335 50 C380 59 395 70 430 51 C465 32 495 44 530 36 C565 28 600 47 625 31 C650 18 675 28 700 12 L700 120 L0 120 Z"
                             fill="url(#graphFill)"
                           />
-
 
                           <path
                             d="M0 95 C55 92 70 75 120 80 C165 85 180 55 225 62 C270 69 295 42 335 50 C380 59 395 70 430 51 C465 32 495 44 530 36 C565 28 600 47 625 31 C650 18 675 28 700 12"
@@ -636,7 +664,6 @@ export default function LoginPage() {
                   </div>
 
                 </div>
-
 
                 {/* Floating notification */}
 
@@ -699,7 +726,6 @@ export default function LoginPage() {
 
               </div>
 
-
               {/* FEATURES */}
 
               <div className="mt-10 flex items-center gap-8">
@@ -725,7 +751,6 @@ export default function LoginPage() {
 
           </div>
 
-
           {/* ===================================================== */}
           {/* RIGHT LOGIN */}
           {/* ===================================================== */}
@@ -749,7 +774,6 @@ export default function LoginPage() {
                     'linear-gradient(135deg, rgba(201,167,106,0.35), rgba(255,255,255,0.04), rgba(83,109,254,0.18))',
                 }}
               />
-
 
               {/* Login Card */}
 
@@ -783,7 +807,6 @@ export default function LoginPage() {
                   "
                 />
 
-
                 {/* Header */}
 
                 <div className="mb-8">
@@ -808,7 +831,6 @@ export default function LoginPage() {
 
                     </div>
 
-
                     {/* Logo */}
 
                     <div
@@ -832,7 +854,6 @@ export default function LoginPage() {
 
                   </div>
 
-
                   <h2 className="text-3xl sm:text-[2.1rem] font-black tracking-[-0.035em] text-white">
                     Welcome back.
                   </h2>
@@ -842,7 +863,6 @@ export default function LoginPage() {
                   </p>
 
                 </div>
-
 
                 {/* ERROR */}
 
@@ -885,7 +905,6 @@ export default function LoginPage() {
 
                   </div>
                 )}
-
 
                 {/* FORM */}
 
@@ -969,7 +988,6 @@ export default function LoginPage() {
                     </div>
 
                   </div>
-
 
                   {/* PASSWORD */}
 
@@ -1074,6 +1092,51 @@ export default function LoginPage() {
 
                   </div>
 
+                  {/* REMEMBER / FORGOT */}
+
+                  <div className="flex items-center justify-between -mt-1">
+
+                    <label className="flex items-center gap-2 cursor-pointer select-none">
+
+                      <input
+                        type="checkbox"
+                        checked={rememberMe}
+                        onChange={(e) =>
+                          handleRememberMeChange(e.target.checked)
+                        }
+                        className="
+                          h-4
+                          w-4
+                          rounded
+                          border-white/20
+                          bg-white/5
+                          accent-[#C9A76A]
+                          cursor-pointer
+                        "
+                      />
+
+                      <span className="text-[10px] sm:text-[11px] text-white/40 hover:text-white/65 transition-colors">
+                        Remember me
+                      </span>
+
+                    </label>
+
+                    <button
+                      type="button"
+                      onClick={() => router.push('/forgot-password')}
+                      className="
+                        text-[10px]
+                        sm:text-[11px]
+                        text-[#C9A76A]
+                        hover:text-[#E2C98F]
+                        transition-colors
+                        font-semibold
+                      "
+                    >
+                      Forgot password?
+                    </button>
+
+                  </div>
 
                   {/* LOGIN BUTTON */}
 
@@ -1163,7 +1226,6 @@ export default function LoginPage() {
 
                 </form>
 
-
                 {/* SIGN UP */}
 
                 <div className="mt-6 text-center">
@@ -1203,7 +1265,6 @@ export default function LoginPage() {
 
                 </div>
 
-
                 {/* SECURITY FOOTER */}
 
                 <div className="mt-7 pt-5 border-t border-white/[0.055]">
@@ -1225,7 +1286,6 @@ export default function LoginPage() {
               </div>
 
             </div>
-
 
             {/* MOBILE BRAND */}
 
@@ -1266,7 +1326,6 @@ export default function LoginPage() {
 
       </section>
 
-
       {/* ========================================================= */}
       {/* FOOTER */}
       {/* ========================================================= */}
@@ -1300,7 +1359,6 @@ export default function LoginPage() {
     </main>
   );
 }
-
 
 /* ============================================================= */
 /* FEATURE COMPONENT */
