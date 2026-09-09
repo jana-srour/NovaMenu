@@ -262,17 +262,18 @@ export default function BillingPage() {
         );
       }
 
+      if (!data.clientToken) {
+        throw new Error(
+          'Paddle Checkout client token is not configured.'
+        );
+      }
+
       const paddle =
         await initializePaddle({
-          environment:
-            process.env
-              .NEXT_PUBLIC_PADDLE_ENVIRONMENT ===
-            'production'
-              ? 'production'
-              : 'sandbox',
-          token:
-            process.env
-              .NEXT_PUBLIC_PADDLE_CLIENT_TOKEN!,
+          environment: data.environment === 'production'
+            ? 'production'
+            : 'sandbox',
+          token: data.clientToken,
         });
 
       if (!paddle) {

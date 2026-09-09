@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 
 const PADDLE_API_URL =
-  process.env.NEXT_PUBLIC_PADDLE_ENVIRONMENT === 'production'
+  process.env.NEXT_PADDLE_ENVIRONMENT === 'production'
     ? 'https://api.paddle.com'
     : 'https://sandbox-api.paddle.com';
 

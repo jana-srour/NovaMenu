@@ -5,7 +5,7 @@ import { deleteRestaurantCompletely } from '@/lib/server/delete-restaurant';
 export const runtime = 'nodejs';
 
 const PADDLE_API_URL =
-  process.env.NEXT_PUBLIC_PADDLE_ENVIRONMENT === 'production'
+  process.env.NEXT_PADDLE_ENVIRONMENT === 'production'
     ? 'https://api.paddle.com'
     : 'https://sandbox-api.paddle.com';
 

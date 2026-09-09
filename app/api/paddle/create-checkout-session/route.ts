@@ -2,9 +2,14 @@ import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 
 const PADDLE_API_URL =
-  process.env.NEXT_PUBLIC_PADDLE_ENVIRONMENT === 'production'
+  process.env.NEXT_PADDLE_ENVIRONMENT === 'production'
     ? 'https://api.paddle.com'
     : 'https://sandbox-api.paddle.com';
+
+const PADDLE_ENVIRONMENT =
+  process.env.NEXT_PADDLE_ENVIRONMENT === 'production'
+    ? 'production'
+    : 'sandbox';
 
 const priceMap = {
   starter: {
@@ -262,6 +267,8 @@ export async function POST(request: Request) {
 
     return NextResponse.json({
       transactionId: transaction.id,
+      environment: PADDLE_ENVIRONMENT,
+      clientToken: process.env.NEXT_PUBLIC_PADDLE_CLIENT_TOKEN,
     });
   } catch (error) {
     console.error('Paddle Checkout error:', error);
