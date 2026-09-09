@@ -174,9 +174,6 @@ export async function deleteRestaurantCompletely(
     }
   }
 
-  console.log(
-    `Restaurant completely deleted: ${restaurantId}`
-  );
 
   return {
     success: true,

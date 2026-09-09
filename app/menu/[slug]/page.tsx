@@ -146,6 +146,12 @@ export default function PublicMenuPage() {
   const [customerAddress, setCustomerAddress] =
     useState('');
 
+  const [customerName, setCustomerName] =
+    useState('');
+
+  const [customerPhone, setCustomerPhone] =
+    useState('');
+
   // ==================================================
   // DISCOUNT HELPERS
   // ==================================================
@@ -1031,23 +1037,33 @@ export default function PublicMenuPage() {
 
     if (
       orderType === 'Delivery' &&
-      !customerAddress.trim()
+      (!customerName.trim() ||
+        !customerPhone.trim() ||
+        !customerAddress.trim())
     ) {
       return {
         success: false,
-        error: 'Please enter your full delivery address.',
+        error:
+          'Please enter your name, phone number, and full delivery address.',
       };
     }
 
     const orderId = crypto.randomUUID();
 
-    const { error: orderError } =
+    const { data: createdOrder, error: orderError } =
       await supabase
         .from('orders')
         .insert({
           id: orderId,
           restaurant_id: restaurant.id,
-          customer_name: 'Guest',
+          customer_name:
+            orderType === 'Delivery'
+              ? customerName.trim()
+              : 'Guest',
+          customer_phone:
+            orderType === 'Delivery'
+              ? customerPhone.trim()
+              : null,
           table_number:
             orderType === 'Restaurant'
               ? tableNumber.trim()
@@ -1059,7 +1075,9 @@ export default function PublicMenuPage() {
           status: 'New',
           channel,
           total: totalPrice,
-        });
+        })
+        .select('order_number')
+        .single();
 
     if (orderError) {
       console.error(
@@ -1072,6 +1090,24 @@ export default function PublicMenuPage() {
         error:
           orderError?.message ||
           'Could not create the order.',
+      };
+    }
+
+    if (!createdOrder?.order_number) {
+      console.error(
+        'Order was created without a generated order number:',
+        createdOrder
+      );
+
+      await supabase
+        .from('orders')
+        .delete()
+        .eq('id', orderId);
+
+      return {
+        success: false,
+        error:
+          'The order number was not generated. Please try again.',
       };
     }
 
@@ -1125,6 +1161,7 @@ export default function PublicMenuPage() {
     return {
       success: true,
       orderId,
+      orderNumber: createdOrder.order_number,
     };
   };
 
@@ -1206,7 +1243,7 @@ export default function PublicMenuPage() {
       (orderType === 'Restaurant'
         ? `*Order Type:* Inside Restaurant\n*Table:* ${tableNumber}\n\n`
         : `*Order Type:* Delivery\n*Address:* ${customerAddress}\n\n`) +
-      `*Order ID:* ${result.orderId}\n\n` +
+      `*Order Number:* #${result.orderNumber}\n\n` +
       `*Order:*\n${items}\n\n` +
       `*Total:* ${
         restaurant.currency
@@ -1229,6 +1266,8 @@ export default function PublicMenuPage() {
     setCart([]);
     setTableNumber('');
     setCustomerAddress('');
+    setCustomerName('');
+    setCustomerPhone('');
     setShowOrderPopup(false);
   };
 
@@ -4557,7 +4596,7 @@ export default function PublicMenuPage() {
                                     setShowOrderPopup(false);
 
                                     alert(
-                                      `Order ${result.orderId} has been sent to Orders.`
+                                      `Order #${result.orderNumber} has been sent to Orders.`
                                     );
                                   }}
                                   className="w-full h-11 rounded-xl flex items-center justify-center gap-2 text-[9px] uppercase tracking-[.13em] font-black transition-all hover:opacity-90"
@@ -4659,54 +4698,103 @@ export default function PublicMenuPage() {
 
                             <div className="mt-3">
 
-                              <label
-                                className="block mb-1.5 text-[8px] uppercase tracking-[.2em] font-black"
-                                style={{
-                                  color: "rgba(255,255,255,0.68)",
-                                }}
-                              >
-                                {orderType === 'Restaurant'
-                                  ? 'Table Number'
-                                  : 'Delivery Address'}
-                              </label>
-
                               {orderType === 'Restaurant' ? (
-
-                                <input
-                                  value={tableNumber}
-                                  onChange={(e) =>
-                                    setTableNumber(e.target.value)
-                                  }
-                                  placeholder="e.g. 2"
-                                  inputMode="numeric"
-                                  className="w-full h-10 px-3 rounded-xl border outline-none text-[10px]"
-                                  style={{
-                                    background:
-                                      "rgba(255,255,255,0.045)",
-                                    color: "#FFFFFF",
-                                    borderColor:
-                                      `${theme.public_border}75`,
-                                  }}
-                                />
+                                <>
+                                  <label
+                                    className="block mb-1.5 text-[8px] uppercase tracking-[.2em] font-black"
+                                    style={{ color: "rgba(255,255,255,0.68)" }}
+                                  >
+                                    Table Number
+                                  </label>
+                                  <input
+                                    value={tableNumber}
+                                    onChange={(e) =>
+                                      setTableNumber(e.target.value)
+                                    }
+                                    placeholder="e.g. 2"
+                                    inputMode="numeric"
+                                    className="w-full h-10 px-3 rounded-xl border outline-none text-[10px]"
+                                    style={{
+                                      background: "rgba(255,255,255,0.045)",
+                                      color: "#FFFFFF",
+                                      borderColor: `${theme.public_border}75`,
+                                    }}
+                                  />
+                                </>
 
                               ) : (
-
-                                <textarea
-                                  value={customerAddress}
-                                  onChange={(e) =>
-                                    setCustomerAddress(e.target.value)
-                                  }
-                                  placeholder="Enter your full delivery address..."
-                                  rows={3}
-                                  className="w-full px-3 py-2.5 rounded-xl border outline-none text-[10px] resize-none"
-                                  style={{
-                                    background:
-                                      "rgba(255,255,255,0.045)",
-                                    color: "#FFFFFF",
-                                    borderColor:
-                                      `${theme.public_border}75`,
-                                  }}
-                                />
+                                <div className="space-y-3">
+                                  <div>
+                                    <label
+                                      className="block mb-1.5 text-[8px] uppercase tracking-[.2em] font-black"
+                                      style={{ color: "rgba(255,255,255,0.68)" }}
+                                    >
+                                      Full name
+                                    </label>
+                                    <input
+                                      value={customerName}
+                                      onChange={(e) =>
+                                        setCustomerName(e.target.value)
+                                      }
+                                      placeholder="Enter your full name"
+                                      required
+                                      autoComplete="name"
+                                      className="w-full h-10 px-3 rounded-xl border outline-none text-[10px]"
+                                      style={{
+                                        background: "rgba(255,255,255,0.045)",
+                                        color: "#FFFFFF",
+                                        borderColor: `${theme.public_border}75`,
+                                      }}
+                                    />
+                                  </div>
+                                  <div>
+                                    <label
+                                      className="block mb-1.5 text-[8px] uppercase tracking-[.2em] font-black"
+                                      style={{ color: "rgba(255,255,255,0.68)" }}
+                                    >
+                                      Phone number
+                                    </label>
+                                    <input
+                                      value={customerPhone}
+                                      onChange={(e) =>
+                                        setCustomerPhone(e.target.value)
+                                      }
+                                      placeholder="Enter your phone number"
+                                      type="tel"
+                                      required
+                                      autoComplete="tel"
+                                      className="w-full h-10 px-3 rounded-xl border outline-none text-[10px]"
+                                      style={{
+                                        background: "rgba(255,255,255,0.045)",
+                                        color: "#FFFFFF",
+                                        borderColor: `${theme.public_border}75`,
+                                      }}
+                                    />
+                                  </div>
+                                  <div>
+                                    <label
+                                      className="block mb-1.5 text-[8px] uppercase tracking-[.2em] font-black"
+                                      style={{ color: "rgba(255,255,255,0.68)" }}
+                                    >
+                                      Delivery address
+                                    </label>
+                                    <textarea
+                                      value={customerAddress}
+                                      onChange={(e) =>
+                                        setCustomerAddress(e.target.value)
+                                      }
+                                      placeholder="Enter your full delivery address..."
+                                      rows={3}
+                                      required
+                                      className="w-full px-3 py-2.5 rounded-xl border outline-none text-[10px] resize-none"
+                                      style={{
+                                        background: "rgba(255,255,255,0.045)",
+                                        color: "#FFFFFF",
+                                        borderColor: `${theme.public_border}75`,
+                                      }}
+                                    />
+                                  </div>
+                                </div>
 
                               )}
 
@@ -4745,6 +4833,8 @@ export default function PublicMenuPage() {
                           setOrderType('Restaurant');
                           setTableNumber('');
                           setCustomerAddress('');
+                          setCustomerName('');
+                          setCustomerPhone('');
                           setShowOrderPopup(true);
                         }}
                         className="group flex items-center gap-3 px-5 py-3.5 rounded-full border backdrop-blur-xl shadow-2xl transition-all hover:-translate-y-1"

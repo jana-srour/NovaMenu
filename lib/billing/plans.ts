@@ -10,6 +10,20 @@ export type BillingFeature =
   | 'inventory'
   | 'branches';
 
+export const billingFeatureLabels: Record<
+  BillingFeature,
+  string
+> = {
+  dashboard: 'Dashboard',
+  menu: 'Digital Menu',
+  qr: 'Custom Branded QR Code Generator & High-Res Export',
+  orders: 'Direct Order Receiving & Kitchen Prep Dashboard',
+  pricing: 'Dynamic Pricing, Combo Builder, & Time-Based Promotions',
+  team: 'Team Management',
+  inventory: 'Inventory Management (Coming Soon)',
+  branches: 'Multiple Branches (Coming Soon)',
+};
+
 export type SubscriptionStatus =
   | 'trialing'
   | 'active'
@@ -31,31 +45,31 @@ export const billingPlans: Record<
 > = {
   starter: {
     name: 'Starter',
-    monthlyPrice: 25,
-    yearlyPrice: 250,
-    effectiveMonthlyRate: '$20.83',
+    monthlyPrice: 19,
+    yearlyPrice: 190,
+    effectiveMonthlyRate: '$15.83',
     discount: '2 months free',
-    description: 'The essentials for publishing and sharing your menu.',
+    description: 'Keep as a lightweight digital menu. Add Multi-language support (English/Arabic) and Instant Item Availability Toggles to make it instantly viable for standalone cafes.',
     features: ['menu', 'qr'],
   },
 
   pro: {
     name: 'Pro',
-    monthlyPrice: 69,
-    yearlyPrice: 690,
-    effectiveMonthlyRate: '$57.50',
+    monthlyPrice: 49,
+    yearlyPrice: 490,
+    effectiveMonthlyRate: '$40.83',
     discount: '2 months free',
-    description: 'The tools you need to run daily restaurant operations.',
+    description: 'Frame this as the primary plan for delivery/takeout and cloud kitchens. Explicitly highlight Order Routing (WhatsApp/Dashboard) and Item Modifiers/Add-ons.',
     features: ['dashboard', 'menu', 'qr', 'orders'],
   },
 
   enterprise: {
     name: 'Enterprise',
-    monthlyPrice: 99,
-    yearlyPrice: 890,
-    effectiveMonthlyRate: '$74.17',
+    monthlyPrice: 89,
+    yearlyPrice: 790,
+    effectiveMonthlyRate: '$65.83',
     discount: '2+ months free',
-    description: 'The complete NOVAMENU operating platform.',
+    description: 'Reposition this specifically for multi-branch brands or central operations. Include Multi-Location Menu Sync, Staff Roles & Permissions, and POS/ERP Webhook Integrations.',
     features: [
       'dashboard',
       'menu',

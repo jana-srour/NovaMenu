@@ -818,9 +818,11 @@ export default function SettingsPage() {
           : null;
 
       setDeactivationMessage(
-        formattedDate
-          ? `Your restaurant has been scheduled for deactivation. Your subscription will remain active until ${formattedDate}, after which the restaurant data and account will be permanently deleted.`
-          : 'Your restaurant has been scheduled for deactivation. The restaurant will remain active until the end of the current subscription period, after which it will be permanently deleted.'
+        data?.deletedImmediately
+          ? 'Your trial account and its restaurant data have been permanently deleted.'
+          : formattedDate
+            ? `Your restaurant has been scheduled for deactivation. Your subscription will remain active until ${formattedDate}, after which the restaurant data and account will be permanently deleted.`
+            : 'Your restaurant has been scheduled for deactivation. The restaurant will remain active until the end of the current subscription period, after which it will be permanently deleted.'
       );
 
       setShowDeactivateModal(false);
@@ -2279,7 +2281,7 @@ export default function SettingsPage() {
                               `${theme.portal_text}80`,
                           }}
                         >
-                          Deactivating this restaurant will cancel the subscription at the end of the current billing or trial period. Your restaurant and its data will remain available until then. After the scheduled date, the restaurant data and associated accounts will be permanently deleted.
+                          Deactivating this restaurant cancels paid subscriptions at the end of the current billing period, keeping your restaurant and data available until then. Trial accounts are deactivated immediately. After deactivation, the restaurant data and associated accounts are permanently deleted.
                         </p>
                       </div>
                     </div>
@@ -2640,7 +2642,7 @@ export default function SettingsPage() {
                           `${theme.portal_text}90`,
                       }}
                     >
-                      Your Paddle subscription will be canceled at the end of the current billing or trial period.
+                      Your paid Paddle subscription will be canceled at the end of the current billing period. Trial accounts are canceled immediately.
                     </span>
                   </div>
 
@@ -2659,7 +2661,7 @@ export default function SettingsPage() {
                           `${theme.portal_text}90`,
                       }}
                     >
-                      Your restaurant, menu, orders, settings, team records, and other data will remain intact until that date.
+                      For paid subscriptions, your restaurant, menu, orders, settings, team records, and other data remain intact until the billing period ends. Trial account data is deleted immediately.
                     </span>
                   </div>
 

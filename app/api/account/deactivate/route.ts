@@ -1,10 +1,13 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
+import { deleteRestaurantCompletely } from '@/lib/server/delete-restaurant';
 
 export const runtime = 'nodejs';
 
 const PADDLE_API_URL =
-  process.env.PADDLE_API_URL || 'https://api.paddle.com';
+  process.env.NEXT_PUBLIC_PADDLE_ENVIRONMENT === 'production'
+    ? 'https://api.paddle.com'
+    : 'https://sandbox-api.paddle.com';
 
 export async function POST(request: Request) {
   try {
@@ -114,7 +117,10 @@ export async function POST(request: Request) {
       );
     }
 
+    const isTrial = subscription?.status === 'trialing';
+
     if (
+      !isTrial &&
       subscription?.deletion_requested_at &&
       subscription?.deletion_scheduled_at
     ) {
@@ -131,8 +137,8 @@ export async function POST(request: Request) {
     let deletionScheduledAt: string | null = null;
 
     /*
-     * If Paddle has a real subscription, cancel it at
-     * the end of the current billing/trial period.
+     * Trials are deactivated immediately. Cancel the provider
+     * subscription first when one exists, then remove all data.
      */
     if (subscription?.provider_subscription_id) {
       const paddleResponse = await fetch(
@@ -146,7 +152,9 @@ export async function POST(request: Request) {
           },
           body: JSON.stringify({
             effective_from:
-              'next_billing_period',
+              isTrial
+                ? 'immediately'
+                : 'next_billing_period',
           }),
         }
       );
@@ -171,35 +179,41 @@ export async function POST(request: Request) {
         );
       }
 
-      deletionScheduledAt =
-        paddleData?.data?.scheduledChange?.effectiveAt ??
-        null;
+      deletionScheduledAt = isTrial
+        ? null
+        : paddleData?.data?.scheduledChange?.effectiveAt ??
+          null;
 
       /*
        * Fallback in case Paddle does not return a
        * scheduled change in the response.
        */
-      if (!deletionScheduledAt) {
+      if (!isTrial && !deletionScheduledAt) {
         deletionScheduledAt =
           subscription.trial_ends_at ??
           subscription.current_period_end ??
           null;
       }
-    } else {
+    } else if (!isTrial) {
       /*
-       * Trial/account without a Paddle subscription.
-       * Keep the data until the existing trial expires.
+       * Paid account without a Paddle subscription.
+       * Use the local subscription period as the fallback.
        */
       deletionScheduledAt =
-        subscription?.trial_ends_at ??
         subscription?.current_period_end ??
+        subscription?.trial_ends_at ??
         null;
     }
 
-    /*
-     * If there is no future expiration date, the account
-     * can be removed immediately.
-     */
+    if (isTrial) {
+      await deleteRestaurantCompletely(restaurantId);
+
+      return NextResponse.json({
+        success: true,
+        deletedImmediately: true,
+      });
+    }
+
     if (
       !deletionScheduledAt ||
       new Date(deletionScheduledAt) <= now
@@ -240,10 +254,6 @@ export async function POST(request: Request) {
         { status: 500 }
       );
     }
-
-    console.log(
-      `Restaurant deletion scheduled: restaurant=${restaurantId}, deletion=${deletionScheduledAt}`
-    );
 
     return NextResponse.json({
       success: true,

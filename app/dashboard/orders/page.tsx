@@ -8,15 +8,22 @@ import { PlanRequired } from '@/app/dashboard/components/plan-required';
 import { subscriptionAllows, type BillingPlan, type SubscriptionStatus } from '@/lib/billing/plans';
 
 type OrderStatus = 'New' | 'Preparing' | 'Ready' | 'Delivered';
+type OrderLocation = 'Restaurant' | 'Delivery';
+type SortOption = 'newest' | 'oldest';
+type DateFilter = 'all' | 'today' | 'last7' | 'last30';
 type Order = {
   id: string;
+  orderNumber: number;
   customer: string;
+  customerPhone: string;
   table: string;
   address: string;
   status: OrderStatus;
   channel: string;
   total: number;
   createdAt: string;
+  createdAtTimestamp: number;
+  location: OrderLocation;
   items: {
     name: string;
     qty: number;
@@ -25,7 +32,9 @@ type Order = {
 };
 type OrderRow = {
   id: string;
+  order_number: number;
   customer_name: string | null;
+  customer_phone: string | null;
   table_number: string | null;
   customer_address: string | null;
   status: OrderStatus;
@@ -73,13 +82,17 @@ const formatPrice = (price: number) => {
 function mapOrder(row: OrderRow): Order {
   return {
     id: row.id,
+    orderNumber: row.order_number,
     customer: row.customer_name || 'Guest',
+    customerPhone: row.customer_phone || '',
     table: row.table_number || '',
     address: row.customer_address || '',
     status: row.status,
     channel: row.channel,
     total: Number(row.total),
     createdAt: new Date(row.created_at).toLocaleString(),
+    createdAtTimestamp: new Date(row.created_at).getTime(),
+    location: row.customer_address ? 'Delivery' : 'Restaurant',
     items: (row.order_items || []).map((item) => ({
       name: item.item_name,
       qty: item.quantity,
@@ -93,14 +106,23 @@ export default function OrdersPage() {
   const [currency, setCurrency] = useState('USD');
   const [orders, setOrders] = useState<Order[]>([]);
   const [filter, setFilter] = useState<'All' | OrderStatus>('All');
+  const [locationFilter, setLocationFilter] = useState<'All' | OrderLocation>('All');
+  const [dateFilter, setDateFilter] = useState<DateFilter>('all');
+  const [sortOption, setSortOption] = useState<SortOption>('newest');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [planAllowed, setPlanAllowed] = useState(true);
 
   const loadOrders = useCallback(async (id: string) => {
     const { data, error: queryError } = await supabase.from('orders')
-        .select('id, customer_name, table_number, customer_address, status, channel, total, created_at, order_items(item_name, quantity, unit_price)')
-    if (queryError) { setError(queryError.message); return; }
+        .select('id, order_number, customer_name, customer_phone, table_number, customer_address, status, channel, total, created_at, order_items(item_name, quantity, unit_price)')
+        .eq('restaurant_id', id)
+    if (queryError) {
+      console.error('Failed to load restaurant orders:', queryError);
+      setError(`Could not load orders: ${queryError.message}`);
+      return;
+    }
+
     setOrders(((data || []) as OrderRow[]).map(mapOrder));
   }, []);
 
@@ -186,7 +208,25 @@ export default function OrdersPage() {
     setOrders((current) => current.map((order) => order.id === id ? { ...order, status } : order));
   };
 
-  const visibleOrders = useMemo(() => filter === 'All' ? orders : orders.filter((order) => order.status === filter), [filter, orders]);
+  const visibleOrders = useMemo(() => {
+    const now = new Date();
+    const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
+    const dateCutoff = dateFilter === 'today'
+      ? startOfToday
+      : dateFilter === 'last7'
+        ? now.getTime() - 7 * 24 * 60 * 60 * 1000
+        : dateFilter === 'last30'
+          ? now.getTime() - 30 * 24 * 60 * 60 * 1000
+          : null;
+
+    return orders
+      .filter((order) => filter === 'All' || order.status === filter)
+      .filter((order) => locationFilter === 'All' || order.location === locationFilter)
+      .filter((order) => dateCutoff === null || order.createdAtTimestamp >= dateCutoff)
+      .sort((first, second) => sortOption === 'newest'
+        ? second.createdAtTimestamp - first.createdAtTimestamp
+        : first.createdAtTimestamp - second.createdAtTimestamp);
+  }, [dateFilter, filter, locationFilter, orders, sortOption]);
   const revenue = orders.reduce((sum, order) => sum + order.total, 0);
 
   if (loading) return <DashboardLoader />;
@@ -201,10 +241,10 @@ export default function OrdersPage() {
   }
 
   return <div className="min-h-screen" style={{ background: 'var(--portal-background)', color: 'var(--portal-text)' }}><main className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
-    <header className="mb-7 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between"><div><p className="text-[9px] font-black uppercase tracking-[0.2em]" style={{ color: 'var(--portal-accent)' }}>Live orders</p><h1 className="mt-2 text-3xl font-black tracking-tight sm:text-4xl">Orders Management</h1><p className="mt-2 text-sm" style={{ color: 'var(--portal-text)' }}>Every order is synchronized with the restaurant database.</p></div><div className="rounded-2xl border px-4 py-3" style={{ borderColor: 'var(--portal-border)', background: 'var(--portal-surface)' }}><p className="text-[9px] font-black uppercase tracking-[0.16em]" style={{ color: 'var(--portal-text)' }}>Tracked sales</p><p className="mt-1 text-xl font-black">{currency}{formatPrice(revenue)}</p></div></header>
+    <header className="mb-7 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between"><div><p className="text-[9px] font-black uppercase tracking-[0.2em]" style={{ color: 'var(--portal-accent)' }}>Live orders</p><h1 className="mt-2 text-3xl font-black tracking-tight sm:text-4xl">Orders Management - test456</h1><p className="mt-2 text-sm" style={{ color: 'var(--portal-text)' }}>Every order is synchronized with the restaurant database.</p></div><div className="rounded-2xl border px-4 py-3" style={{ borderColor: 'var(--portal-border)', background: 'var(--portal-surface)' }}><p className="text-[9px] font-black uppercase tracking-[0.16em]" style={{ color: 'var(--portal-text)' }}>Tracked sales</p><p className="mt-1 text-xl font-black">{currency}{formatPrice(revenue)}</p></div></header>
     {error && <div className="mb-5 rounded-xl border p-3 text-sm" style={{ borderColor: 'var(--portal-border)', background: 'var(--portal-surface)', color: 'var(--portal-text)' }}>{error}</div>}
     <section className="mb-6 grid grid-cols-2 gap-4 xl:grid-cols-4">{statuses.map((status) => <div key={status} className="rounded-2xl border p-5 shadow-sm" style={{ borderColor: 'var(--portal-border)', background: 'var(--portal-surface)', color: 'var(--portal-text)' }}><p className="text-[9px] font-black uppercase tracking-[0.16em]" style={{ color: 'var(--portal-text)' }}>{status}</p><p className="mt-4 text-3xl font-black">{orders.filter((order) => order.status === status).length}</p><p className="mt-1 text-xs" style={{ color: 'var(--portal-text)' }}>Orders in this stage</p></div>)}</section>
-    <section className="rounded-3xl border p-4 shadow-sm sm:p-6" style={{ borderColor: 'var(--portal-border)', background: 'var(--portal-surface)' }}><div className="mb-5 flex flex-wrap gap-2">{(['All', ...statuses] as const).map((option) => <button key={option} type="button" onClick={() => setFilter(option)} className="rounded-full px-3 py-2 text-[10px] font-black uppercase tracking-[0.14em]" style={{ background: filter === option ? 'var(--portal-accent)' : 'var(--portal-background)', color: filter === option ? '#fff' : 'var(--portal-text)' }}>{option}</button>)}</div><div className="space-y-4">{visibleOrders.length === 0 && <div className="rounded-2xl border border-dashed p-10 text-center text-sm" style={{ borderColor: 'var(--portal-border)', color: 'var(--portal-text)' }}>No orders in this view.</div>}{visibleOrders.map((order) => <article key={order.id} className="rounded-2xl border p-4" style={{ borderColor: 'var(--portal-border)', background: 'var(--portal-background)' }}><div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between"><div><div className="flex items-center gap-3"><strong className="text-sm tracking-[0.1em]">{order.id}</strong><span
+    <section className="rounded-3xl border p-4 shadow-sm sm:p-6" style={{ borderColor: 'var(--portal-border)', background: 'var(--portal-surface)' }}><div className="mb-5 flex flex-col gap-3"><div className="flex flex-wrap gap-2">{(['All', ...statuses] as const).map((option) => <button key={option} type="button" onClick={() => setFilter(option)} className="rounded-full px-3 py-2 text-[10px] font-black uppercase tracking-[0.14em]" style={{ background: filter === option ? 'var(--portal-accent)' : 'var(--portal-background)', color: filter === option ? '#fff' : 'var(--portal-text)' }}>{option}</button>)}</div><div className="flex flex-wrap gap-3"><label className="flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.12em]" style={{ color: 'var(--portal-text)' }}>Place<select value={locationFilter} onChange={(event) => setLocationFilter(event.target.value as 'All' | OrderLocation)} className="rounded-xl border px-3 py-2 text-xs font-bold normal-case tracking-normal outline-none" style={{ borderColor: 'var(--portal-border)', background: 'var(--portal-background)', color: 'var(--portal-text)' }}><option value="All">All places</option><option value="Restaurant">Inside restaurant</option><option value="Delivery">Delivery</option></select></label><label className="flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.12em]" style={{ color: 'var(--portal-text)' }}>Date<select value={dateFilter} onChange={(event) => setDateFilter(event.target.value as DateFilter)} className="rounded-xl border px-3 py-2 text-xs font-bold normal-case tracking-normal outline-none" style={{ borderColor: 'var(--portal-border)', background: 'var(--portal-background)', color: 'var(--portal-text)' }}><option value="all">All dates</option><option value="today">Today</option><option value="last7">Last 7 days</option><option value="last30">Last 30 days</option></select></label><label className="flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.12em]" style={{ color: 'var(--portal-text)' }}>Sort<select value={sortOption} onChange={(event) => setSortOption(event.target.value as SortOption)} className="rounded-xl border px-3 py-2 text-xs font-bold normal-case tracking-normal outline-none" style={{ borderColor: 'var(--portal-border)', background: 'var(--portal-background)', color: 'var(--portal-text)' }}><option value="newest">Newest first</option><option value="oldest">Oldest first</option></select></label></div></div><div className="space-y-4">{visibleOrders.length === 0 && <div className="rounded-2xl border border-dashed p-10 text-center text-sm" style={{ borderColor: 'var(--portal-border)', color: 'var(--portal-text)' }}>No orders in this view.</div>}{visibleOrders.map((order) => <article key={order.id} className="rounded-2xl border p-4" style={{ borderColor: 'var(--portal-border)', background: 'var(--portal-background)' }}><div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between"><div><div className="flex items-center gap-3"><strong className="text-sm tracking-[0.1em]">#{order.orderNumber}</strong><span
   className="rounded-full px-2.5 py-1 text-[9px] font-black uppercase"
   style={{
     background: `${getStatusAccent(order.status)}18`,
@@ -216,13 +256,22 @@ export default function OrdersPage() {
 </span></div>
 <div className="mt-2 space-y-1 text-xs" style={{ color: 'var(--portal-text)' }}>
   <p>
-    {order.customer} · {order.channel} · {order.createdAt}
+    {order.location === 'Restaurant'
+      ? `${order.customer} · ${order.channel} · Inside restaurant`
+      : `${order.customer} · Delivery`} · {order.createdAt}
   </p>
 
   {order.address ? (
-    <p className="font-semibold">
-      📍 Delivery: {order.address}
-    </p>
+    <>
+      <p className="font-semibold">
+        📍 Delivery: {order.address}
+      </p>
+      {order.customerPhone && (
+        <p className="font-semibold">
+          ☎️ {order.customerPhone}
+        </p>
+      )}
+    </>
   ) : order.table ? (
     <p className="font-semibold">
       🍽️ Table: {order.table}

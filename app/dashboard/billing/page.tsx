@@ -10,7 +10,9 @@ import {
 import { initializePaddle } from '@paddle/paddle-js';
 import { supabase } from '@/lib/supabase';
 import {
+  billingFeatureLabels,
   billingPlans,
+  type BillingFeature,
   type BillingPlan,
   type SubscriptionStatus,
 } from '@/lib/billing/plans';
@@ -170,11 +172,6 @@ export default function BillingPage() {
             `restaurant_id=eq.${restaurantId}`,
         },
         (payload) => {
-          console.log(
-            'Billing subscription realtime update:',
-            payload
-          );
-
           if (
             payload.eventType === 'DELETE'
           ) {
@@ -636,10 +633,9 @@ export default function BillingPage() {
                               'var(--portal-accent)',
                           }}
                         />
-                        {feature.replace(
-                          '_',
-                          ' '
-                        )}
+                        {billingFeatureLabels[
+                          feature as BillingFeature
+                        ]}
                       </li>
                     )
                   )}

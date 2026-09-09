@@ -118,10 +118,6 @@ export async function POST(request: Request) {
       process.env.SUPABASE_SERVICE_ROLE_KEY!
     );
 
-    console.log(
-      `Received Paddle webhook: ${event.eventType}`
-    );
-
     switch (event.eventType) {
       /*
        * Paddle creates a subscription after a recurring
@@ -248,10 +244,6 @@ export async function POST(request: Request) {
           throw error;
         }
 
-        console.log(
-          `Paddle subscription synced: restaurant=${restaurantId}, plan=${plan.planCode}, interval=${plan.billingInterval}, status=${status}`
-        );
-
         break;
       }
 
@@ -294,10 +286,6 @@ export async function POST(request: Request) {
           throw error;
         }
 
-        console.log(
-          `Paddle subscription marked past due: restaurant=${restaurantId}`
-        );
-
         break;
       }
 
@@ -339,10 +327,6 @@ export async function POST(request: Request) {
 
           throw error;
         }
-
-        console.log(
-          `Paddle subscription paused: restaurant=${restaurantId}`
-        );
 
         break;
       }
@@ -413,10 +397,6 @@ export async function POST(request: Request) {
           throw updateError;
         }
 
-        console.log(
-          `Paddle subscription canceled: restaurant=${restaurantId}`
-        );
-
         /*
         * Only permanently delete the restaurant when the owner
         * explicitly requested account deactivation.
@@ -430,17 +410,10 @@ export async function POST(request: Request) {
           );
 
           if (scheduledAt <= new Date()) {
-            console.log(
-              `Deleting deactivated restaurant: ${restaurantId}`
-            );
-
             await deleteRestaurantCompletely(
               restaurantId
             );
 
-            console.log(
-              `Restaurant deletion completed: ${restaurantId}`
-            );
           } else {
             console.log(
               `Restaurant deletion is scheduled for ${scheduledAt.toISOString()}`
@@ -460,10 +433,6 @@ export async function POST(request: Request) {
        * is required here.
        */
       case 'transaction.completed': {
-        console.log(
-          'Paddle transaction completed.'
-        );
-
         break;
       }
 
@@ -472,10 +441,6 @@ export async function POST(request: Request) {
        * ignored for now.
        */
       default: {
-        console.log(
-          `Unhandled Paddle webhook event: ${event.eventType}`
-        );
-
         break;
       }
     }
