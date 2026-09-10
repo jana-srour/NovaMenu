@@ -46,8 +46,8 @@ export const billingPlans: Record<
   starter: {
     name: 'Starter',
     monthlyPrice: 19,
-    yearlyPrice: 190,
-    effectiveMonthlyRate: '$15.83',
+    yearlyPrice: 180,
+    effectiveMonthlyRate: '$15',
     discount: '2 months free',
     description: 'Keep as a lightweight digital menu. Add Multi-language support (English/Arabic) and Instant Item Availability Toggles to make it instantly viable for standalone cafes.',
     features: ['menu', 'qr'],
@@ -55,9 +55,9 @@ export const billingPlans: Record<
 
   pro: {
     name: 'Pro',
-    monthlyPrice: 49,
-    yearlyPrice: 490,
-    effectiveMonthlyRate: '$40.83',
+    monthlyPrice: 39,
+    yearlyPrice: 360,
+    effectiveMonthlyRate: '$30',
     discount: '2 months free',
     description: 'Frame this as the primary plan for delivery/takeout and cloud kitchens. Explicitly highlight Order Routing (WhatsApp/Dashboard) and Item Modifiers/Add-ons.',
     features: ['dashboard', 'menu', 'qr', 'orders'],
@@ -65,9 +65,9 @@ export const billingPlans: Record<
 
   enterprise: {
     name: 'Enterprise',
-    monthlyPrice: 89,
-    yearlyPrice: 790,
-    effectiveMonthlyRate: '$65.83',
+    monthlyPrice: 79,
+    yearlyPrice: 720,
+    effectiveMonthlyRate: '$60',
     discount: '2+ months free',
     description: 'Reposition this specifically for multi-branch brands or central operations. Include Multi-Location Menu Sync, Staff Roles & Permissions, and POS/ERP Webhook Integrations.',
     features: [
