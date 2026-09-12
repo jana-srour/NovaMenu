@@ -19,6 +19,7 @@ import {
   Users,
   WalletCards,
   X,
+  BarChart3,
 } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { subscribeRestaurantRealtime } from '@/lib/live-sync';
@@ -531,6 +532,14 @@ export default function DashboardLayout({
       name: 'Branch Management',
       href: '#',
       icon: GitBranch,
+      type: 'coming-soon' as const,
+      locked: true,
+    },
+
+    {
+      name: 'Reports',
+      href: '#',
+      icon: BarChart3,
       type: 'coming-soon' as const,
       locked: true,
     },

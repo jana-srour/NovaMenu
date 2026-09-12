@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
+import { billingPlans, type BillingPlan } from '@/lib/billing/plans';
 
 const PADDLE_API_URL =
   process.env.NEXT_PADDLE_ENVIRONMENT === 'production'
@@ -120,6 +121,9 @@ export async function POST(request: Request) {
     }
 
     const priceId = priceMap[plan][billingCycle];
+    const checkoutUrl =
+      process.env.PADDLE_CHECKOUT_URL ||
+      `${new URL(request.url).origin}/dashboard/billing`;
 
     const { data: existingSubscription, error: subscriptionError } =
       await supabase
@@ -144,56 +148,34 @@ export async function POST(request: Request) {
       );
     }
 
-    if (
-      existingSubscription?.provider_subscription_id &&
-      existingSubscription.status === 'active'
-    ) {
-      const paddleResponse = await fetch(
-        `${PADDLE_API_URL}/subscriptions/${existingSubscription.provider_subscription_id}`,
-        {
-          method: 'PATCH',
-          headers: {
-            Authorization: `Bearer ${process.env.PADDLE_API_KEY}`,
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            items: [
-              {
-                price_id: priceId,
-                quantity: 1,
-              },
-            ],
-            proration_billing_mode: 'prorated_immediately',
-          }),
-        }
-      );
+    const currentPlanDetails =
+      existingSubscription?.plan_code &&
+      existingSubscription.plan_code in billingPlans
+        ? billingPlans[
+            existingSubscription.plan_code as BillingPlan
+          ]
+        : null;
 
-      const paddleData = await paddleResponse.json();
+    const currentPlanPrice =
+      currentPlanDetails &&
+      existingSubscription?.billing_interval === billingCycle
+        ? billingCycle === 'monthly'
+          ? currentPlanDetails.monthlyPrice
+          : currentPlanDetails.yearlyPrice
+        : null;
 
-      if (!paddleResponse.ok) {
-        console.error(
-          'Paddle subscription update failed:',
-          paddleData
-        );
+    const selectedPlanPrice =
+      billingCycle === 'monthly'
+        ? billingPlans[plan].monthlyPrice
+        : billingPlans[plan].yearlyPrice;
 
-        return NextResponse.json(
-          {
-            error:
-              paddleData?.error?.detail ||
-              paddleData?.error?.message ||
-              'Unable to update Paddle subscription.',
-          },
-          { status: 502 }
-        );
-      }
-
-      return NextResponse.json({
-        updated: true,
-        subscriptionId:
-          paddleData?.data?.id ||
-          existingSubscription.provider_subscription_id,
-      });
-    }
+    const upgradeCredit =
+      existingSubscription?.status === 'active' &&
+      existingSubscription.plan_code !== plan &&
+      currentPlanPrice !== null &&
+      selectedPlanPrice > currentPlanPrice
+        ? currentPlanPrice
+        : 0;
 
     /*
      * Create the Paddle transaction server-side.
@@ -217,19 +199,39 @@ export async function POST(request: Request) {
             },
           ],
           collection_mode: 'automatic',
+          checkout: {
+            url: checkoutUrl,
+          },
+          ...(upgradeCredit > 0
+            ? {
+                discount: {
+                  description:
+                    'Credit for the current paid plan',
+                  type: 'flat',
+                  amount: String(
+                    Math.round(upgradeCredit * 100)
+                  ),
+                  currency_code: 'USD',
+                  recur: false,
+                },
+              }
+            : {}),
+          ...(existingSubscription?.provider_customer_id
+            ? {
+                customer_id:
+                  existingSubscription.provider_customer_id,
+              }
+            : {}),
           custom_data: {
             restaurant_id: restaurant.id,
             user_id: user.id,
             plan_code: plan,
             billing_interval: billingCycle,
+            previous_subscription_id:
+              existingSubscription?.status === 'active'
+                ? existingSubscription.provider_subscription_id
+                : null,
           },
-          ...(user.email
-            ? {
-                customer: {
-                  email: user.email,
-                },
-              }
-            : {}),
         }),
       }
     );
@@ -239,12 +241,26 @@ export async function POST(request: Request) {
     if (!paddleResponse.ok) {
       console.error(
         'Paddle transaction creation failed:',
-        paddleData
+        JSON.stringify(paddleData, null, 2)
       );
+
+      const paddleErrors = Array.isArray(
+        paddleData?.error?.errors
+      )
+        ? paddleData.error.errors
+            .map(
+              (item: { detail?: string; field?: string }) =>
+                item.field
+                  ? `${item.field}: ${item.detail || 'Invalid value.'}`
+                  : item.detail || 'Invalid request.'
+            )
+            .join(' ')
+        : null;
 
       return NextResponse.json(
         {
           error:
+            paddleErrors ||
             paddleData?.error?.detail ||
             paddleData?.error?.message ||
             'Unable to create Paddle checkout.',
@@ -269,6 +285,9 @@ export async function POST(request: Request) {
       transactionId: transaction.id,
       environment: PADDLE_ENVIRONMENT,
       clientToken: process.env.NEXT_PUBLIC_PADDLE_CLIENT_TOKEN,
+      upgradeCredit,
+      amountBeforePaddleFees:
+        selectedPlanPrice - upgradeCredit,
     });
   } catch (error) {
     console.error('Paddle Checkout error:', error);

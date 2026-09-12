@@ -6,6 +6,7 @@ import {
   CreditCard,
   ExternalLink,
   ShieldCheck,
+  X,
 } from 'lucide-react';
 import { initializePaddle } from '@paddle/paddle-js';
 import { supabase } from '@/lib/supabase';
@@ -42,6 +43,12 @@ export default function BillingPage() {
 
   const [billingInterval, setBillingInterval] =
     useState<BillingInterval>('monthly');
+
+  const [pendingPlan, setPendingPlan] =
+    useState<BillingPlan | null>(null);
+
+  const [pendingBillingInterval, setPendingBillingInterval] =
+    useState<BillingInterval | null>(null);
 
   useEffect(() => {
     let channel:
@@ -209,6 +216,21 @@ export default function BillingPage() {
   const startCheckout = async (
     plan: BillingPlan
   ) => {
+    setPendingPlan(plan);
+    setPendingBillingInterval(billingInterval);
+  };
+
+  const confirmCheckout = async () => {
+    if (!pendingPlan || !pendingBillingInterval) {
+      return;
+    }
+
+    const plan = pendingPlan;
+    const checkoutInterval = pendingBillingInterval;
+
+    setPendingPlan(null);
+    setPendingBillingInterval(null);
+
     try {
       setLoading(true);
 
@@ -232,7 +254,7 @@ export default function BillingPage() {
           },
           body: JSON.stringify({
             plan,
-            billingCycle: billingInterval,
+            billingCycle: checkoutInterval,
           }),
         }
       );
@@ -244,16 +266,6 @@ export default function BillingPage() {
           data.error ||
             'Unable to start checkout.'
         );
-      }
-
-      if (data.updated) {
-        setLoading(false);
-
-        alert(
-          'Your subscription has been updated successfully.'
-        );
-
-        return;
       }
 
       if (!data.transactionId) {
@@ -274,6 +286,14 @@ export default function BillingPage() {
             ? 'production'
             : 'sandbox',
           token: data.clientToken,
+          eventCallback: (event) => {
+            if (event.name?.includes('error')) {
+              console.error(
+                'Paddle Checkout event error:',
+                event
+              );
+            }
+          },
         });
 
       if (!paddle) {
@@ -286,6 +306,7 @@ export default function BillingPage() {
         transactionId: data.transactionId,
         settings: {
           allowLogout: false,
+          theme: 'light',
         },
       });
 
@@ -364,6 +385,37 @@ export default function BillingPage() {
 
   const hasActiveSubscription =
     subscription?.status === 'active';
+
+  const pendingPlanDetails = pendingPlan
+    ? billingPlans[pendingPlan]
+    : null;
+
+  const pendingPrice = pendingPlanDetails && pendingBillingInterval
+    ? pendingBillingInterval === 'monthly'
+      ? pendingPlanDetails.monthlyPrice
+      : pendingPlanDetails.yearlyPrice
+    : null;
+
+  const pendingCurrentPrice =
+    subscription?.status === 'active' &&
+    subscription.billing_interval === pendingBillingInterval
+      ? pendingBillingInterval === 'monthly'
+        ? billingPlans[subscription.plan_code].monthlyPrice
+        : billingPlans[subscription.plan_code].yearlyPrice
+      : null;
+
+  const pendingUpgradeDifference =
+    pendingPrice !== null &&
+    pendingCurrentPrice !== null &&
+    pendingPlan !== subscription?.plan_code &&
+    pendingPrice > pendingCurrentPrice
+      ? pendingPrice - pendingCurrentPrice
+      : null;
+
+  const pendingCheckoutAmount =
+    pendingPrice !== null
+      ? pendingPrice - (pendingUpgradeDifference || 0)
+      : null;
 
   return (
     <main
@@ -688,14 +740,14 @@ export default function BillingPage() {
           </p>
 
           <p className="mt-1">
-            Your subscription automatically renews at the end
-            of each monthly or yearly billing period, and the
-            applicable subscription fee will be charged
-            automatically.
+            Each purchase covers one monthly or yearly billing
+            period. It does not renew automatically. Paddle
+            Checkout shows the final price, taxes, and transaction
+            fees before you pay.
           </p>
 
           <p className="mt-2">
-            You can cancel your subscription at any time through
+            You can manage billing through
             <span
               className="font-bold"
               style={{
@@ -704,10 +756,9 @@ export default function BillingPage() {
             >
               {' '}Manage billing
             </span>
-            . Cancellation takes effect at the end of your
-            current billing period, so you will continue to have
-            access to your current plan and its features until
-            then.
+              . Your access remains available through the paid
+              period, then the account is locked until you manually
+              renew a plan.
           </p>
 
           <p className="mt-2">
@@ -747,6 +798,160 @@ export default function BillingPage() {
           are automatically updated after payment.
         </div>
       </div>
+
+      {pendingPlanDetails && pendingBillingInterval && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-[#202534]/45 px-5 py-8 backdrop-blur-sm"
+          role="presentation"
+          onMouseDown={(event) => {
+            if (event.target === event.currentTarget) {
+              setPendingPlan(null);
+              setPendingBillingInterval(null);
+            }
+          }}
+        >
+          <section
+            aria-labelledby="purchase-dialog-title"
+            aria-modal="true"
+            className="w-full max-w-lg overflow-hidden rounded-[28px] border shadow-2xl"
+            role="dialog"
+            style={{
+              background: 'var(--portal-surface)',
+              borderColor: 'var(--portal-border)',
+              color: 'var(--portal-text)',
+            }}
+          >
+            <div
+              className="flex items-start justify-between gap-5 border-b px-6 py-5 sm:px-7"
+              style={{
+                borderColor: 'var(--portal-border)',
+                background: 'var(--portal-accent-soft)',
+              }}
+            >
+              <div>
+                <p
+                  className="text-[10px] font-black uppercase tracking-[0.18em]"
+                  style={{ color: 'var(--portal-accent)' }}
+                >
+                  Review purchase
+                </p>
+                <h2
+                  id="purchase-dialog-title"
+                  className="mt-2 text-2xl font-black tracking-tight"
+                >
+                  Ready to continue?
+                </h2>
+              </div>
+
+              <button
+                type="button"
+                aria-label="Close purchase review"
+                onClick={() => {
+                  setPendingPlan(null);
+                  setPendingBillingInterval(null);
+                }}
+                className="rounded-xl p-2 transition hover:bg-white/70"
+                style={{ color: 'var(--portal-muted)' }}
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            <div className="space-y-5 px-6 py-6 sm:px-7">
+              <div
+                className="flex items-center justify-between gap-4 rounded-2xl border p-4"
+                style={{
+                  borderColor: 'var(--portal-border)',
+                  background: 'var(--portal-background)',
+                }}
+              >
+                <div>
+                  <p className="text-lg font-black">
+                    {pendingPlanDetails.name} plan
+                  </p>
+                  <p
+                    className="mt-1 text-xs font-semibold uppercase tracking-[0.12em]"
+                    style={{ color: 'var(--portal-muted)' }}
+                  >
+                    Billed {pendingBillingInterval === 'monthly' ? 'monthly' : 'yearly'}
+                  </p>
+                </div>
+
+                <p className="text-2xl font-black">
+                  ${pendingCheckoutAmount}
+                  <span
+                    className="text-xs font-bold"
+                    style={{ color: 'var(--portal-muted)' }}
+                  >
+                    {' '}/{pendingBillingInterval === 'monthly' ? 'mo' : 'year'}
+                  </span>
+                </p>
+              </div>
+
+              <div className="space-y-3 text-sm leading-6">
+                {pendingUpgradeDifference !== null && (
+                  <div
+                    className="rounded-2xl border p-4"
+                    style={{
+                      borderColor: 'var(--portal-accent)',
+                      background: 'var(--portal-accent-soft)',
+                    }}
+                  >
+                    <div className="flex items-center justify-between gap-4">
+                      <span className="font-bold">
+                        Upgrade credit from your current plan
+                      </span>
+                      <span className="font-black">
+                        -${pendingUpgradeDifference}
+                      </span>
+                    </div>
+                    <p
+                      className="mt-1 text-xs"
+                      style={{ color: 'var(--portal-muted)' }}
+                    >
+                      You pay only the difference for this billing period.
+                    </p>
+                  </div>
+                )}
+
+                <p>
+                  Paddle Checkout will show the final total, including applicable taxes and transaction fees, before you pay. The amount above is before those fees and taxes.
+                </p>
+                <p style={{ color: 'var(--portal-muted)' }}>
+                  This purchase covers one {pendingBillingInterval === 'monthly' ? 'month' : 'year'} and will not renew automatically. Your account will be locked when the paid period ends until you renew manually.
+                </p>
+              </div>
+
+              <div className="flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setPendingPlan(null);
+                    setPendingBillingInterval(null);
+                  }}
+                  className="rounded-2xl border px-5 py-3 text-xs font-black uppercase tracking-[0.1em] transition hover:opacity-75"
+                  style={{
+                    borderColor: 'var(--portal-border)',
+                    color: 'var(--portal-text)',
+                  }}
+                >
+                  Go back
+                </button>
+
+                <button
+                  type="button"
+                  onClick={confirmCheckout}
+                  className="inline-flex items-center justify-center gap-2 rounded-2xl px-5 py-3 text-xs font-black uppercase tracking-[0.1em] text-white transition hover:opacity-90"
+                  style={{ background: 'var(--portal-accent)' }}
+                >
+                  <CreditCard className="h-4 w-4" />
+                  Continue to checkout
+                </button>
+              </div>
+            </div>
+          </section>
+        </div>
+      )}
     </main>
   );
 }

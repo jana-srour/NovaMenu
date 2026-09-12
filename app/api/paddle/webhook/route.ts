@@ -5,6 +5,11 @@ import { deleteRestaurantCompletely } from '@/lib/server/delete-restaurant';
 
 export const runtime = 'nodejs';
 
+const PADDLE_API_URL =
+  process.env.NEXT_PADDLE_ENVIRONMENT === 'production'
+    ? 'https://api.paddle.com'
+    : 'https://sandbox-api.paddle.com';
+
 const paddle = new Paddle(
   process.env.PADDLE_API_KEY!
 );
@@ -244,6 +249,39 @@ export async function POST(request: Request) {
           throw error;
         }
 
+        /*
+         * Every checkout covers one paid period. Cancel the
+         * resulting recurring subscription at the next period
+         * instead of allowing the saved payment method to renew it.
+         */
+        if (
+          subscriptionId &&
+          subscription.status === 'active' &&
+          !subscription.scheduledChange
+        ) {
+          const cancelResponse = await fetch(
+            `${PADDLE_API_URL}/subscriptions/${subscriptionId}/cancel`,
+            {
+              method: 'POST',
+              headers: {
+                Authorization:
+                  `Bearer ${process.env.PADDLE_API_KEY}`,
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify({
+                effective_from: 'next_billing_period',
+              }),
+            }
+          );
+
+          if (!cancelResponse.ok) {
+            console.error(
+              'Failed to disable Paddle subscription renewal:',
+              await cancelResponse.text()
+            );
+          }
+        }
+
         break;
       }
 
@@ -275,6 +313,10 @@ export async function POST(request: Request) {
           .eq(
             'restaurant_id',
             restaurantId
+          )
+          .eq(
+            'provider_subscription_id',
+            subscription.id
           );
 
         if (error) {
@@ -317,6 +359,10 @@ export async function POST(request: Request) {
           .eq(
             'restaurant_id',
             restaurantId
+          )
+          .eq(
+            'provider_subscription_id',
+            subscription.id
           );
 
         if (error) {
@@ -359,6 +405,7 @@ export async function POST(request: Request) {
             .select(
               `
                 id,
+                provider_subscription_id,
                 deletion_requested_at,
                 deletion_scheduled_at
               `
@@ -375,6 +422,14 @@ export async function POST(request: Request) {
           throw lookupError;
         }
 
+        if (
+          restaurantSubscription?.provider_subscription_id &&
+          restaurantSubscription.provider_subscription_id !==
+            subscription.id
+        ) {
+          break;
+        }
+
         /*
         * Always synchronize Paddle's final subscription state.
         */
@@ -386,7 +441,11 @@ export async function POST(request: Request) {
               updated_at:
                 new Date().toISOString(),
             })
-            .eq('restaurant_id', restaurantId);
+            .eq('restaurant_id', restaurantId)
+            .eq(
+              'provider_subscription_id',
+              subscription.id
+            );
 
         if (updateError) {
           console.error(
@@ -433,6 +492,34 @@ export async function POST(request: Request) {
        * is required here.
        */
       case 'transaction.completed': {
+        const transaction = event.data;
+        const previousSubscriptionId =
+          transaction.customData?.previous_subscription_id;
+
+        if (previousSubscriptionId) {
+          const cancelResponse = await fetch(
+            `${PADDLE_API_URL}/subscriptions/${previousSubscriptionId}/cancel`,
+            {
+              method: 'POST',
+              headers: {
+                Authorization:
+                  `Bearer ${process.env.PADDLE_API_KEY}`,
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify({
+                effective_from: 'next_billing_period',
+              }),
+            }
+          );
+
+          if (!cancelResponse.ok) {
+            console.error(
+              'Failed to retire the previous Paddle subscription:',
+              await cancelResponse.text()
+            );
+          }
+        }
+
         break;
       }
 
