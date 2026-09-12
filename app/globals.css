@@ -1,5 +1,14 @@
 @import "tailwindcss";
 
+[data-settings-section="appearance"] .settings-profile-panel,
+[data-settings-section="appearance"] .settings-profile-sidebar {
+  display: none;
+}
+
+[data-settings-section="profile"] .settings-appearance-panel {
+  display: none;
+}
+
 :root {
   --background: #ffffff;
   --foreground: #202534;

@@ -3,7 +3,7 @@
 import { FormEvent, useState } from 'react';
 import { ArrowUpRight, Check, Mail, MessageSquare, Sparkles } from 'lucide-react';
 
-const APP_VERSION = '0.2.0';
+const APP_VERSION = '0.2.5';
 const FEEDBACK_EMAIL = 'novera.labs1@gmail.com';
 
 export default function AboutPage() {

@@ -7,15 +7,20 @@ import {
   ArrowUpRight,
   BriefcaseBusiness,
   Boxes,
+  ChevronDown,
+  ChevronRight,
   GitBranch,
   Info,
   LayoutDashboard,
   Lock,
   Menu,
   Percent,
+  Palette,
+  Printer,
   QrCode,
   ReceiptText,
   Settings2,
+  UserRound,
   Users,
   WalletCards,
   X,
@@ -98,6 +103,9 @@ export default function DashboardLayout({
   const [loadingRestaurant, setLoadingRestaurant] = useState(true);
   const [theme, setTheme] = useState(defaultRestaurantTheme);
   const [subscription, setSubscription] = useState<Subscription | null>(null);
+  const [settingsExpanded, setSettingsExpanded] = useState(
+    pathname.startsWith('/dashboard/settings')
+  );
 
   const subscriptionFeatureForPath = (
     path: string
@@ -135,6 +143,53 @@ export default function DashboardLayout({
                 : pathname.startsWith('/dashboard/qr')
                   ? permissions.can_manage_qr_studio
                   : true;
+
+  const renderSettingsNavigation = (closeMobile = false) => (
+    <div className="mt-1 space-y-1 pl-3">
+      <Link
+        href="/dashboard/settings"
+        onClick={closeMobile ? () => setMobileOpen(false) : undefined}
+        className="flex w-full items-center gap-3 rounded-xl px-3.5 py-2.5 text-xs font-semibold transition hover:opacity-90"
+        style={{
+          color:
+            pathname === '/dashboard/settings'
+              ? theme.portal_accent
+              : theme.portal_text,
+        }}
+      >
+        <UserRound className="h-4 w-4" />
+        <span>Profile</span>
+      </Link>
+
+      <Link
+        href="/dashboard/settings/appearance"
+        onClick={closeMobile ? () => setMobileOpen(false) : undefined}
+        className="flex w-full items-center gap-3 rounded-xl px-3.5 py-2.5 text-xs font-semibold transition hover:opacity-90"
+        style={{
+          color: pathname === '/dashboard/settings/appearance'
+            ? theme.portal_accent
+            : theme.portal_text,
+        }}
+      >
+        <Palette className="h-4 w-4" />
+        <span>Appearance</span>
+      </Link>
+
+      <Link
+        href="/dashboard/settings/printers"
+        onClick={closeMobile ? () => setMobileOpen(false) : undefined}
+        className="flex w-full items-center gap-3 rounded-xl px-3.5 py-2.5 text-xs font-semibold transition hover:opacity-90"
+        style={{
+          color: pathname === '/dashboard/settings/printers'
+            ? theme.portal_accent
+            : theme.portal_text,
+        }}
+      >
+        <Printer className="h-4 w-4" />
+        <span>Printers</span>
+      </Link>
+    </div>
+  );
 
   /*
    * =========================================================
@@ -925,17 +980,28 @@ export default function DashboardLayout({
           {/* SETTINGS */}
 
           {permissions.can_manage_settings && (
-            <Link
-              href="/dashboard/settings"
-              className="group flex w-full items-center gap-3 rounded-xl px-3.5 py-3 text-sm font-semibold transition hover:opacity-90"
-              style={{ color: theme.portal_text }}
-            >
-              <span className="flex h-8 w-8 items-center justify-center rounded-lg text-base" style={{ background: `${theme.portal_accent}12`, color: theme.portal_accent }}>
-                <Settings2 className="h-4 w-4" />
-              </span>
+            <div>
+              <button
+                type="button"
+                onClick={() => setSettingsExpanded((expanded) => !expanded)}
+                className="group flex w-full items-center gap-3 rounded-xl px-3.5 py-3 text-sm font-semibold transition hover:opacity-90"
+                style={{ color: theme.portal_text }}
+                aria-expanded={settingsExpanded}
+              >
+                <span className="flex h-8 w-8 items-center justify-center rounded-lg text-base" style={{ background: `${theme.portal_accent}12`, color: theme.portal_accent }}>
+                  <Settings2 className="h-4 w-4" />
+                </span>
 
-              <span>Settings</span>
-            </Link>
+                <span className="flex-1 text-left">Settings</span>
+                {settingsExpanded ? (
+                  <ChevronDown className="h-4 w-4" />
+                ) : (
+                  <ChevronRight className="h-4 w-4" />
+                )}
+              </button>
+
+              {settingsExpanded && renderSettingsNavigation()}
+            </div>
           )}
 
           <Link
@@ -1155,18 +1221,28 @@ export default function DashboardLayout({
 
 
             {permissions.can_manage_settings && (
-              <Link
-                href="/dashboard/settings"
-                onClick={() => setMobileOpen(false)}
-                className="group flex w-full items-center gap-3 rounded-xl px-3.5 py-3 text-sm font-semibold"
-                style={{ color: theme.portal_text }}
-              >
-                <span className="flex h-8 w-8 items-center justify-center rounded-lg text-base" style={{ background: `${theme.portal_accent}12`, color: theme.portal_accent }}>
-                  <Settings2 className="h-4 w-4" />
-                </span>
+              <div>
+                <button
+                  type="button"
+                  onClick={() => setSettingsExpanded((expanded) => !expanded)}
+                  className="group flex w-full items-center gap-3 rounded-xl px-3.5 py-3 text-sm font-semibold"
+                  style={{ color: theme.portal_text }}
+                  aria-expanded={settingsExpanded}
+                >
+                  <span className="flex h-8 w-8 items-center justify-center rounded-lg text-base" style={{ background: `${theme.portal_accent}12`, color: theme.portal_accent }}>
+                    <Settings2 className="h-4 w-4" />
+                  </span>
 
-                <span>Settings</span>
-              </Link>
+                  <span className="flex-1 text-left">Settings</span>
+                  {settingsExpanded ? (
+                    <ChevronDown className="h-4 w-4" />
+                  ) : (
+                    <ChevronRight className="h-4 w-4" />
+                  )}
+                </button>
+
+                {settingsExpanded && renderSettingsNavigation(true)}
+              </div>
             )}
 
             <Link

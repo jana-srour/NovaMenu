@@ -1,6 +1,7 @@
 ﻿'use client';
 
 import { useEffect, useState } from 'react';
+import { usePathname } from 'next/navigation';
 import {
   Check,
   Clipboard,
@@ -71,6 +72,10 @@ const emptySettings: SettingsForm = {
 };
 
 export default function SettingsPage() {
+  const pathname = usePathname();
+  const isAppearancePage =
+    pathname === '/dashboard/settings/appearance';
+
   const [restaurantId, setRestaurantId] =
     useState<string | null>(null);
   const [isOwner, setIsOwner] = useState(false);
@@ -848,6 +853,30 @@ export default function SettingsPage() {
       ? `${window.location.origin}/menu/${restaurantSlug}`
       : '';
 
+  const findRestaurantId = async () => {
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+
+    if (!user) {
+      return null;
+    }
+
+    const { data: membership, error } = await supabase
+      .from('restaurant_members')
+      .select('restaurant_id')
+      .eq('user_id', user.id)
+      .limit(1)
+      .maybeSingle();
+
+    if (error) {
+      console.error('Restaurant lookup failed:', error);
+      return null;
+    }
+
+    return membership?.restaurant_id || null;
+  };
+
   const handleCopyMenuLink =
     async () => {
       if (!publicMenuUrl) {
@@ -873,7 +902,10 @@ export default function SettingsPage() {
     setTheme(nextTheme);
     applyRestaurantTheme(nextTheme);
 
-    if (!restaurantId) {
+    const resolvedRestaurantId =
+      restaurantId || await findRestaurantId();
+
+    if (!resolvedRestaurantId) {
       setThemeMessage(
         'No restaurant was found for this account.'
       );
@@ -884,13 +916,13 @@ export default function SettingsPage() {
     setThemeMessage('');
 
     resetStoredRestaurantTheme(
-      restaurantId
+      resolvedRestaurantId
     );
 
     const result =
       await saveRestaurantTheme(
         supabase,
-        restaurantId,
+        resolvedRestaurantId,
         nextTheme
       );
 
@@ -912,7 +944,10 @@ export default function SettingsPage() {
   };
 
   const handleSaveTheme = async () => {
-    if (!restaurantId) {
+    const resolvedRestaurantId =
+      restaurantId || await findRestaurantId();
+
+    if (!resolvedRestaurantId) {
       setThemeMessage(
         'No restaurant was found for this account.'
       );
@@ -925,7 +960,7 @@ export default function SettingsPage() {
     const result =
       await saveRestaurantTheme(
         supabase,
-        restaurantId,
+        resolvedRestaurantId,
         theme
       );
 
@@ -978,7 +1013,10 @@ export default function SettingsPage() {
   return (
     <>
       <div
-        className="min-h-screen"
+        className="settings-page min-h-screen"
+        data-settings-section={
+          isAppearancePage ? 'appearance' : 'profile'
+        }
         style={{
           background:
             theme.portal_background,
@@ -1018,15 +1056,19 @@ export default function SettingsPage() {
                 </div>
 
                 <h1 className="text-3xl font-black tracking-tight sm:text-4xl">
-                  {restaurantName}
+                  {isAppearancePage
+                    ? 'Appearance'
+                    : restaurantName}
                 </h1>
 
                 <p className="mt-2 text-sm text-[#756F66]">
-                  Configure your restaurant profile, communication channels, pricing rules, and brand identity.
+                  {isAppearancePage
+                    ? 'Shape the visual identity of your restaurant portal and public menu.'
+                    : 'Configure your restaurant profile, communication channels, pricing rules, and brand identity.'}
                 </p>
               </div>
 
-              <div className="flex items-center gap-3">
+              <div className={`flex items-center gap-3 ${isAppearancePage ? 'hidden' : ''}`}>
                 {!isEditing ? (
                   <button
                     type="button"
@@ -1073,10 +1115,10 @@ export default function SettingsPage() {
             </div>
           </header>
 
-          <section className="grid gap-6 xl:grid-cols-[1.2fr_0.8fr]">
-            <div className="space-y-6">
+          <section className={`settings-content grid gap-6 ${isAppearancePage ? '' : 'xl:grid-cols-[1.2fr_0.8fr]'}`}>
+            <div className="settings-profile-column space-y-6">
               <div
-                className="rounded-[28px] border p-6 shadow-sm"
+                className="settings-profile-panel rounded-[28px] border p-6 shadow-sm"
                 style={{
                   background:
                     theme.portal_surface,
@@ -1581,7 +1623,7 @@ export default function SettingsPage() {
               </div>
 
               <div
-                className="rounded-[28px] border p-6 shadow-sm"
+                className="settings-profile-panel rounded-[28px] border p-6 shadow-sm"
                 style={{
                   background:
                     theme.portal_surface,
@@ -1677,8 +1719,8 @@ export default function SettingsPage() {
                 </div>
               </div>
 
-              <div
-                className="relative overflow-hidden rounded-[32px] border border-[#D8CBB7] shadow-[0_20px_60px_rgba(83,65,38,0.10)]"
+                <div
+                className="settings-appearance-panel relative overflow-hidden rounded-[32px] border border-[#D8CBB7] shadow-[0_20px_60px_rgba(83,65,38,0.10)]"
                 style={{
                   background:
                     theme.portal_surface,
@@ -2235,6 +2277,9 @@ export default function SettingsPage() {
               {/* OWNER-ONLY DANGER ZONE */}
               {isOwner && (
                 <div
+                  className="settings-profile-panel"
+                >
+                <div
                   className="rounded-[28px] border p-6 shadow-sm"
                   style={{
                     background:
@@ -2341,10 +2386,11 @@ export default function SettingsPage() {
                     </div>
                   )}
                 </div>
+                </div>
               )}
             </div>
 
-            <aside className="space-y-6">
+            <aside className="settings-profile-sidebar space-y-6">
               <div className="rounded-[28px] border border-[#E7E4DE] bg-[#202534] p-6 text-white shadow-xl">
                 <div className="mb-4 flex items-center justify-between">
                   <div>
