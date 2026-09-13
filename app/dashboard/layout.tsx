@@ -42,6 +42,7 @@ interface Restaurant {
 
 interface Permissions {
   can_view_dashboard: boolean;
+  can_view_reports: boolean;
   can_manage_menu: boolean;
   can_manage_pricing: boolean;
   can_manage_orders: boolean;
@@ -58,6 +59,7 @@ interface Subscription {
 
 const defaultPermissions: Permissions = {
   can_view_dashboard: false,
+  can_view_reports: false,
   can_manage_menu: false,
   can_manage_pricing: false,
   can_manage_orders: false,
@@ -112,6 +114,7 @@ export default function DashboardLayout({
   ): BillingFeature | null => {
     if (path.startsWith('/dashboard/menu')) return 'menu';
     if (path.startsWith('/dashboard/orders')) return 'orders';
+    if (path.startsWith('/dashboard/reports')) return 'reports';
     if (path.startsWith('/dashboard/pricing')) return 'pricing';
     if (path.startsWith('/dashboard/qr')) return 'qr';
     if (path.startsWith('/dashboard/team')) return 'team';
@@ -130,6 +133,8 @@ export default function DashboardLayout({
   const currentRouteAccess =
     pathname === '/dashboard'
       ? permissions.can_view_dashboard
+      : pathname.startsWith('/dashboard/reports')
+        ? permissions.can_view_reports
       : pathname.startsWith('/dashboard/menu')
         ? permissions.can_manage_menu
         : pathname.startsWith('/dashboard/team')
@@ -336,6 +341,7 @@ export default function DashboardLayout({
       if (isOwnerOrAdmin) {
         setPermissions({
           can_view_dashboard: true,
+          can_view_reports: true,
           can_manage_menu: true,
           can_manage_pricing: true,
           can_manage_orders: true,
@@ -358,6 +364,7 @@ export default function DashboardLayout({
           .from('restaurant_roles')
           .select(`
             can_view_dashboard,
+            can_view_reports,
             can_manage_menu,
             can_manage_pricing,
             can_manage_orders,
@@ -373,6 +380,9 @@ export default function DashboardLayout({
         setPermissions({
           can_view_dashboard:
             roleData.can_view_dashboard ?? false,
+
+          can_view_reports:
+            roleData.can_view_reports ?? false,
 
           can_manage_menu:
             roleData.can_manage_menu ?? false,
@@ -462,6 +472,7 @@ export default function DashboardLayout({
         if (['owner', 'admin'].includes(role)) {
           setPermissions({
             can_view_dashboard: true,
+            can_view_reports: true,
             can_manage_menu: true,
             can_manage_pricing: true,
             can_manage_orders: true,
@@ -479,13 +490,14 @@ export default function DashboardLayout({
 
         const { data: roleData } = await supabase
           .from('restaurant_roles')
-          .select('can_view_dashboard, can_manage_menu, can_manage_pricing, can_manage_orders, can_manage_team, can_manage_settings, can_manage_qr_studio')
+          .select('can_view_dashboard, can_view_reports, can_manage_menu, can_manage_pricing, can_manage_orders, can_manage_team, can_manage_settings, can_manage_qr_studio')
           .eq('id', membership.position_id)
           .eq('restaurant_id', restaurant.id)
           .maybeSingle();
 
         setPermissions(roleData ? {
           can_view_dashboard: roleData.can_view_dashboard ?? false,
+          can_view_reports: roleData.can_view_reports ?? false,
           can_manage_menu: roleData.can_manage_menu ?? false,
           can_manage_pricing: roleData.can_manage_pricing ?? false,
           can_manage_orders: roleData.can_manage_orders ?? false,
@@ -596,7 +608,9 @@ export default function DashboardLayout({
       href: '/dashboard/reports',
       icon: BarChart3,
       type: 'link' as const,
-      locked: false,
+      locked:
+        !permissions.can_view_reports ||
+        !subscriptionAllowsPath('/dashboard/reports'),
     },
   ];
 

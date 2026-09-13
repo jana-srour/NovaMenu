@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
+import { useEffect, useState } from 'react';
 import {
   BarChart3,
   TrendingUp,
@@ -13,6 +14,27 @@ import {
   Activity,
   FileSpreadsheet,
 } from 'lucide-react';
+import { PlanRequired } from '@/app/dashboard/components/plan-required';
+import { supabase } from '@/lib/supabase';
+import {
+  subscriptionAllows,
+  type BillingPlan,
+  type SubscriptionStatus,
+} from '@/lib/billing/plans';
+
+const isBillingPlan = (value: unknown): value is BillingPlan =>
+  value === 'starter' ||
+  value === 'pro' ||
+  value === 'enterprise';
+
+const isSubscriptionStatus = (
+  value: unknown
+): value is SubscriptionStatus =>
+  value === 'trialing' ||
+  value === 'active' ||
+  value === 'past_due' ||
+  value === 'canceled' ||
+  value === 'expired';
 
 const reportNavigation = [
   {
@@ -68,6 +90,88 @@ export default function ReportsLayout({
   children: React.ReactNode;
 }) {
   const pathname = usePathname();
+  const [checkingPlan, setCheckingPlan] = useState(true);
+  const [reportsAllowed, setReportsAllowed] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    const checkReportsAccess = async () => {
+      const { data: userData } = await supabase.auth.getUser();
+      const user = userData.user;
+
+      if (!user) {
+        if (!cancelled) {
+          setReportsAllowed(false);
+          setCheckingPlan(false);
+        }
+        return;
+      }
+
+      const { data: membership } = await supabase
+        .from('restaurant_members')
+        .select('restaurant_id')
+        .eq('user_id', user.id)
+        .limit(1)
+        .maybeSingle();
+
+      if (!membership) {
+        if (!cancelled) {
+          setReportsAllowed(false);
+          setCheckingPlan(false);
+        }
+        return;
+      }
+
+      const { data: subscription } = await supabase
+        .from('restaurant_subscriptions')
+        .select('plan_code, status, trial_ends_at')
+        .eq('restaurant_id', membership.restaurant_id)
+        .maybeSingle();
+
+      const allowed =
+        subscription &&
+        isBillingPlan(subscription.plan_code) &&
+        isSubscriptionStatus(subscription.status) &&
+        typeof subscription.trial_ends_at === 'string' &&
+        subscriptionAllows(
+          {
+            plan_code: subscription.plan_code,
+            status: subscription.status,
+            trial_ends_at: subscription.trial_ends_at,
+          },
+          'reports'
+        );
+
+      if (!cancelled) {
+        setReportsAllowed(Boolean(allowed));
+        setCheckingPlan(false);
+      }
+    };
+
+    void checkReportsAccess();
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  if (!checkingPlan && !reportsAllowed) {
+    return (
+      <div
+        className="min-h-screen"
+        style={{
+          background: 'var(--portal-background)',
+          color: 'var(--portal-text)',
+        }}
+      >
+        <PlanRequired
+          featureName="Reports & Analytics"
+          requiredPlan="Pro or Enterprise"
+        />
+      </div>
+    );
+  }
 
   return (
     <div

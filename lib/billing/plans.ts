@@ -5,6 +5,7 @@ export type BillingFeature =
   | 'menu'
   | 'qr'
   | 'orders'
+  | 'reports'
   | 'pricing'
   | 'team'
   | 'inventory'
@@ -18,6 +19,7 @@ export const billingFeatureLabels: Record<
   menu: 'Digital Menu',
   qr: 'Custom Branded QR Code Generator & High-Res Export',
   orders: 'Direct Order Receiving & Kitchen Prep Dashboard',
+  reports: 'Reports & Analytics',
   pricing: 'Dynamic Pricing, Combo Builder, & Time-Based Promotions',
   team: 'Team Management',
   inventory: 'Inventory Management (Coming Soon)',
@@ -60,7 +62,7 @@ export const billingPlans: Record<
     effectiveMonthlyRate: '$30',
     discount: '2 months free',
     description: 'Frame this as the primary plan for delivery/takeout and cloud kitchens. Explicitly highlight Order Routing (WhatsApp/Dashboard) and Item Modifiers/Add-ons.',
-    features: ['dashboard', 'menu', 'qr', 'orders'],
+    features: ['dashboard', 'menu', 'qr', 'orders', 'reports'],
   },
 
   enterprise: {
@@ -75,6 +77,7 @@ export const billingPlans: Record<
       'menu',
       'qr',
       'orders',
+      'reports',
       'pricing',
       'team',
       'inventory',

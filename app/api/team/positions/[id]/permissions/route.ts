@@ -131,6 +131,11 @@ export async function GET(
             position.can_view_dashboard
           ),
 
+        can_view_reports:
+          Boolean(
+            position.can_view_reports
+          ),
+
         can_manage_menu:
           Boolean(
             position.can_manage_menu
@@ -369,6 +374,11 @@ export async function PATCH(
       can_view_dashboard:
         Boolean(
           body?.can_view_dashboard
+        ),
+
+      can_view_reports:
+        Boolean(
+          body?.can_view_reports
         ),
 
       can_manage_menu:

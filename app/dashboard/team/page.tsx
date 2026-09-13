@@ -39,6 +39,7 @@ interface TeamPosition {
   can_manage_team: boolean;
   can_manage_settings: boolean;
   can_view_dashboard: boolean;
+  can_view_reports: boolean;
   can_manage_qr_studio: boolean;
 }
 
@@ -128,6 +129,7 @@ export default function TeamPage() {
   const [permissionValues, setPermissionValues] =
     useState({
       can_view_dashboard: true,
+      can_view_reports: false,
       can_manage_menu: false,
       can_manage_pricing: false,
       can_manage_orders: false,
@@ -1289,6 +1291,9 @@ export default function TeamPage() {
     setPermissionValues({
       can_view_dashboard:
         position.can_view_dashboard ?? true,
+
+      can_view_reports:
+        position.can_view_reports ?? false,
 
       can_manage_menu:
         position.can_manage_menu ?? false,
@@ -3402,6 +3407,48 @@ export default function TeamPage() {
                         setPermissionValues((prev) => ({
                           ...prev,
                           can_view_dashboard: e.target.checked,
+                        }))
+                      }
+                      className="h-4 w-4 shrink-0 cursor-pointer"
+                      style={{ accentColor: 'var(--portal-accent)' }}
+                    />
+                  </label>
+
+                  {/* REPORTS */}
+
+                  <label
+                    className="flex cursor-pointer items-center justify-between gap-4 rounded-xl border p-4 transition-colors"
+                    style={{
+                      background: 'var(--portal-background)',
+                      borderColor: 'var(--portal-border)',
+                    }}
+                  >
+                    <div className="min-w-0">
+                      <p
+                        className="text-sm font-bold"
+                        style={{ color: 'var(--portal-text)' }}
+                      >
+                        Reports & Analytics
+                      </p>
+
+                      <p
+                        className="mt-0.5 text-[11px]"
+                        style={{
+                          color: 'var(--portal-text)',
+                          opacity: 0.5,
+                        }}
+                      >
+                        View restaurant reports and analytics.
+                      </p>
+                    </div>
+
+                    <input
+                      type="checkbox"
+                      checked={permissionValues.can_view_reports}
+                      onChange={(e) =>
+                        setPermissionValues((prev) => ({
+                          ...prev,
+                          can_view_reports: e.target.checked,
                         }))
                       }
                       className="h-4 w-4 shrink-0 cursor-pointer"
