@@ -499,7 +499,14 @@ export default function OrdersPage() {
     );
   }, [visibleOrders, sortOption]);
 
-  const totalRevenue = orders.reduce((sum, order) => sum + order.total, 0);
+  const now = new Date();
+  const currentMonthOrders = orders.filter((order) => {
+    const d = new Date(order.createdAtTimestamp);
+    return d.getFullYear() === now.getFullYear() && d.getMonth() === now.getMonth();
+  });
+  const totalRevenue = currentMonthOrders.reduce((sum, order) => sum + order.total, 0);
+  const allTimeRevenue = orders.reduce((sum, order) => sum + order.total, 0);
+  const currentMonthLabel = now.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
   const allDateKeys = useMemo(() => groupedOrders.map((g) => g.dateKey), [groupedOrders]);
 
   if (loading) return <DashboardLoader />;
@@ -543,11 +550,23 @@ export default function OrdersPage() {
                 className="text-[9px] font-black uppercase tracking-[0.16em]"
                 style={{ color: 'var(--portal-text)', opacity: 0.7 }}
               >
-                Total Tracked Sales
+                This Month&apos;s Sales
               </p>
-              <p className="mt-0.5 text-2xl font-black">
+              <p
+                className="text-[9px] font-semibold"
+                style={{ color: 'var(--portal-accent)', opacity: 0.85 }}
+              >
+                {currentMonthLabel}
+              </p>
+              <p className="mt-1 text-2xl font-black">
                 {currency}
                 {formatPrice(totalRevenue)}
+              </p>
+              <p
+                className="mt-0.5 text-[10px]"
+                style={{ color: 'var(--portal-text)', opacity: 0.55 }}
+              >
+                All-time: {currency}{formatPrice(allTimeRevenue)}
               </p>
             </div>
           </div>

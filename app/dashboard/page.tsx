@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 
 import { useEffect, useMemo, useState } from 'react';
 import {
@@ -78,6 +78,8 @@ type TrendPoint = {
   pricing: number;
 };
 
+type ChartView = '7d' | '30d' | 'monthly' | 'yearly';
+
 function localDayKey(date: Date) {
   const year = date.getFullYear();
   const month = String(date.getMonth() + 1).padStart(2, '0');
@@ -111,6 +113,11 @@ function isActivePromotion(item: PromoItemRow, now = Date.now()) {
   if (end !== null && end < now) return false;
 
   return true;
+}
+
+function isCancelledOrder(order: OrderRow) {
+  const status = (order.status || '').toLowerCase();
+  return status === 'cancelled' || status === 'canceled';
 }
 
 function isScheduledPromotion(item: PromoItemRow, now = Date.now()) {
@@ -158,6 +165,8 @@ export default function DashboardPage() {
   const [loading, setLoading] = useState(true);
   const [liveError, setLiveError] = useState('');
   const [planAllowed, setPlanAllowed] = useState(true);
+  const [chartView, setChartView] = useState<ChartView>('7d');
+  const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
 
   useEffect(() => {
     let active = true;
@@ -432,18 +441,100 @@ export default function DashboardPage() {
    * =========================================================
    */
   const trend = useMemo<TrendPoint[]>(() => {
-    return Array.from({ length: 7 }, (_, index) => {
-      const date = new Date();
+    // Cancelled/canceled orders never counted as "tracked sales" — this is
+    // what actually keeps each new day/month/year starting clean from 0
+    // instead of carrying stale or voided orders into the totals.
+    const trackedOrders = (stats?.orders || []).filter(
+      (order) => !isCancelledOrder(order)
+    );
 
+    if (chartView === 'monthly') {
+      // Last 12 calendar months
+      return Array.from({ length: 12 }, (_, index) => {
+        const d = new Date();
+        d.setDate(1);
+        d.setHours(0, 0, 0, 0);
+        d.setMonth(d.getMonth() - (11 - index));
+        const year = d.getFullYear();
+        const month = d.getMonth();
+        const key = `${year}-${String(month + 1).padStart(2, '0')}`;
+
+        const orders = trackedOrders.filter((order) => {
+          const od = new Date(order.created_at);
+          return od.getFullYear() === year && od.getMonth() === month;
+        });
+
+        const pricing =
+          stats?.pricingHistory.filter((entry) => {
+            const ed = new Date(entry.created_at);
+            return ed.getFullYear() === year && ed.getMonth() === month;
+          }) || [];
+
+        const revenue = orders.reduce((sum, o) => sum + Number(o.total || 0), 0);
+
+        return {
+          key,
+          date: d,
+          label: d.toLocaleDateString(undefined, { month: 'short' }),
+          fullLabel: d.toLocaleDateString(undefined, { month: 'long', year: 'numeric' }),
+          orders: orders.length,
+          revenue,
+          pricing: pricing.length,
+        };
+      });
+    }
+
+    if (chartView === 'yearly') {
+      // All available years from data
+      const allOrders = trackedOrders;
+      if (allOrders.length === 0) {
+        const currentYear = new Date().getFullYear();
+        const d = new Date(currentYear, 0, 1);
+        return [{
+          key: String(currentYear),
+          date: d,
+          label: String(currentYear),
+          fullLabel: String(currentYear),
+          orders: 0,
+          revenue: 0,
+          pricing: 0,
+        }];
+      }
+      const minYear = Math.min(...allOrders.map((o) => new Date(o.created_at).getFullYear()));
+      const maxYear = new Date().getFullYear();
+      return Array.from({ length: maxYear - minYear + 1 }, (_, index) => {
+        const year = minYear + index;
+        const d = new Date(year, 0, 1);
+        const orders = allOrders.filter((o) => new Date(o.created_at).getFullYear() === year);
+        const pricing =
+          stats?.pricingHistory.filter(
+            (e) => new Date(e.created_at).getFullYear() === year
+          ) || [];
+        const revenue = orders.reduce((sum, o) => sum + Number(o.total || 0), 0);
+        return {
+          key: String(year),
+          date: d,
+          label: String(year),
+          fullLabel: String(year),
+          orders: orders.length,
+          revenue,
+          pricing: pricing.length,
+        };
+      });
+    }
+
+    // 7d or 30d — one point per day
+    const days = chartView === '30d' ? 30 : 7;
+    return Array.from({ length: days }, (_, index) => {
+      const date = new Date();
       date.setHours(0, 0, 0, 0);
-      date.setDate(date.getDate() - (6 - index));
+      date.setDate(date.getDate() - (days - 1 - index));
 
       const key = localDayKey(date);
 
-      const orders =
-        stats?.orders.filter(
-          (order) => localDayKey(new Date(order.created_at)) === key
-        ) || [];
+      const orders = trackedOrders.filter(
+        (order) => localDayKey(new Date(order.created_at)) === key
+      );
 
       const pricing =
         stats?.pricingHistory.filter(
@@ -458,9 +549,10 @@ export default function DashboardPage() {
       return {
         key,
         date,
-        label: date.toLocaleDateString(undefined, {
-          weekday: 'short',
-        }),
+        label:
+          chartView === '30d'
+            ? date.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })
+            : date.toLocaleDateString(undefined, { weekday: 'short' }),
         fullLabel: date.toLocaleDateString(undefined, {
           weekday: 'short',
           month: 'short',
@@ -471,7 +563,7 @@ export default function DashboardPage() {
         pricing: pricing.length,
       };
     });
-  }, [stats?.orders, stats?.pricingHistory]);
+  }, [stats?.orders, stats?.pricingHistory, chartView]);
 
   /*
    * =========================================================
@@ -489,39 +581,44 @@ export default function DashboardPage() {
       0
     );
 
-    const averageDailyRevenue = totalRevenue / 7;
-    const averageDailyOrders = totalOrders / 7;
+    const periodLength = trend.length || 1;
+    const averageDailyRevenue = totalRevenue / periodLength;
+    const averageDailyOrders = totalOrders / periodLength;
 
     const averageOrderValue =
       totalOrders > 0 ? totalRevenue / totalOrders : 0;
 
+    const empty: TrendPoint = {
+      key: '',
+      date: new Date(),
+      label: '',
+      fullLabel: '',
+      orders: 0,
+      revenue: 0,
+      pricing: 0,
+    };
+
     const peakRevenueDay = trend.reduce(
-      (best, point) =>
-        point.revenue > best.revenue ? point : best,
-      trend[0] || {
-        key: '',
-        date: new Date(),
-        label: '',
-        fullLabel: '',
-        orders: 0,
-        revenue: 0,
-        pricing: 0,
-      }
+      (best, point) => (point.revenue > best.revenue ? point : best),
+      trend[0] || empty
     );
 
     const peakOrdersDay = trend.reduce(
-      (best, point) =>
-        point.orders > best.orders ? point : best,
-      trend[0] || {
-        key: '',
-        date: new Date(),
-        label: '',
-        fullLabel: '',
-        orders: 0,
-        revenue: 0,
-        pricing: 0,
-      }
+      (best, point) => (point.orders > best.orders ? point : best),
+      trend[0] || empty
     );
+
+    const periodLabel =
+      chartView === '7d'
+        ? '7-day'
+        : chartView === '30d'
+        ? '30-day'
+        : chartView === 'monthly'
+        ? '12-month'
+        : 'All-years';
+
+    const avgLabel =
+      chartView === 'monthly' ? 'Avg. monthly' : chartView === 'yearly' ? 'Avg. yearly' : 'Avg. daily';
 
     return {
       totalOrders,
@@ -531,8 +628,10 @@ export default function DashboardPage() {
       averageOrderValue,
       peakRevenueDay,
       peakOrdersDay,
+      periodLabel,
+      avgLabel,
     };
-  }, [trend]);
+  }, [trend, chartView]);
 
   if (loading) {
     return <DashboardLoader />;
@@ -563,7 +662,11 @@ export default function DashboardPage() {
 
   const today = localDayKey(new Date());
 
-  const todayOrders = stats.orders.filter(
+  const trackedOrders = stats.orders.filter(
+    (order) => !isCancelledOrder(order)
+  );
+
+  const todayOrders = trackedOrders.filter(
     (order) => localDayKey(new Date(order.created_at)) === today
   );
 
@@ -602,7 +705,7 @@ export default function DashboardPage() {
 
   const weekAgo = Date.now() - 7 * 24 * 60 * 60 * 1000;
 
-  const weeklyOrders = stats.orders.filter(
+  const weeklyOrders = trackedOrders.filter(
     (order) => new Date(order.created_at).getTime() >= weekAgo
   );
 
@@ -916,47 +1019,74 @@ export default function DashboardPage() {
                 </div>
 
                 <h2 className="mt-1 text-xl font-black">
-                  Revenue & order performance
+                  Revenue &amp; order performance
                 </h2>
 
                 <p
                   className="mt-1 text-xs"
                   style={{ color: 'var(--portal-text)' }}
                 >
-                  Daily performance across the last seven days.
+                  {
+                    chartView === '7d' ? 'Daily performance across the last 7 days.'
+                    : chartView === '30d' ? 'Daily performance across the last 30 days.'
+                    : chartView === 'monthly' ? 'Monthly performance across the last 12 months.'
+                    : 'Annual revenue and order performance.'
+                  }
                 </p>
               </div>
 
-              <div className="flex flex-wrap items-center gap-4">
-                <div className="flex items-center gap-2 text-[10px] font-bold">
-                  <span
-                    className="h-2 w-2 rounded-full"
-                    style={{
-                      background: 'var(--portal-accent)',
-                    }}
-                  />
-                  Revenue
-                </div>
-
-                <div className="flex items-center gap-2 text-[10px] font-bold">
-                  <span
-                    className="h-2 w-2 rounded-sm"
-                    style={{
-                      background: 'rgba(128,128,128,0.28)',
-                    }}
-                  />
-                  Orders
-                </div>
-
-                <span
-                  className="rounded-lg px-2.5 py-1.5 text-[9px] font-black"
+              <div className="flex flex-col gap-3 sm:items-end">
+                {/* Period selector */}
+                <div
+                  className="flex items-center gap-1 rounded-xl border p-1"
                   style={{
-                    background: 'var(--portal-accent-soft)',
-                    color: 'var(--portal-accent)',
+                    borderColor: 'var(--portal-border)',
+                    background: 'var(--portal-background)',
                   }}
                 >
-                  LIVE
-                </span>
+                  {(['7d', '30d', 'monthly', 'yearly'] as ChartView[]).map((view) => (
+                    <button
+                      key={view}
+                      type="button"
+                      onClick={() => { setChartView(view); setHoveredIndex(null); }}
+                      className="rounded-lg px-3 py-1.5 text-[10px] font-black uppercase tracking-[0.12em] transition-all cursor-pointer"
+                      style={{
+                        background: chartView === view ? 'var(--portal-accent)' : 'transparent',
+                        color: chartView === view ? '#ffffff' : 'var(--portal-text)',
+                      }}
+                    >
+                      {view === '7d' ? '7D' : view === '30d' ? '30D' : view === 'monthly' ? 'Monthly' : 'Yearly'}
+                    </button>
+                  ))}
+                </div>
+
+                <div className="flex flex-wrap items-center gap-4">
+                  <div className="flex items-center gap-2 text-[10px] font-bold">
+                    <span
+                      className="h-2 w-2 rounded-full"
+                      style={{ background: 'var(--portal-accent)' }}
+                    />
+                    Revenue
+                  </div>
+
+                  <div className="flex items-center gap-2 text-[10px] font-bold">
+                    <span
+                      className="h-2 w-2 rounded-sm"
+                      style={{ background: 'rgba(128,128,128,0.28)' }}
+                    />
+                    Orders
+                  </div>
+
+                  <span
+                    className="rounded-lg px-2.5 py-1.5 text-[9px] font-black"
+                    style={{
+                      background: 'var(--portal-accent-soft)',
+                      color: 'var(--portal-accent)',
+                    }}
+                  >
+                    LIVE
+                  </span>
+                </div>
               </div>
             </div>
 
@@ -968,14 +1098,14 @@ export default function DashboardPage() {
             >
               {[
                 {
-                  label: '7-day revenue',
+                  label: `${analytics.periodLabel} revenue`,
                   value: formatCurrency(
                     analytics.totalRevenue,
                     stats.restaurant.currency
                   ),
                 },
                 {
-                  label: '7-day orders',
+                  label: `${analytics.periodLabel} orders`,
                   value: String(analytics.totalOrders),
                 },
                 {
@@ -986,7 +1116,7 @@ export default function DashboardPage() {
                   ),
                 },
                 {
-                  label: 'Avg. daily revenue',
+                  label: analytics.avgLabel + ' revenue',
                   value: formatCurrency(
                     analytics.averageDailyRevenue,
                     stats.restaurant.currency
@@ -996,9 +1126,7 @@ export default function DashboardPage() {
                 <div
                   key={item.label}
                   className="p-4 sm:p-5"
-                  style={{
-                    borderColor: 'var(--portal-border)',
-                  }}
+                  style={{ borderColor: 'var(--portal-border)' }}
                 >
                   <p
                     className="text-[9px] font-black uppercase tracking-[0.14em]"
@@ -1021,7 +1149,8 @@ export default function DashboardPage() {
                   viewBox={`0 0 ${chartWidth} ${chartHeight}`}
                   className="min-w-[700px] w-full"
                   role="img"
-                  aria-label="Seven day revenue and order performance chart"
+                  aria-label="Revenue and order performance chart"
+                  onMouseLeave={() => setHoveredIndex(null)}
                 >
                   {/* GRID */}
                   {revenueGridValues.map((ratio) => {
@@ -1069,12 +1198,27 @@ export default function DashboardPage() {
                     strokeOpacity="0.12"
                   />
 
+                  {/* HOVER VERTICAL CURSOR LINE */}
+                  {hoveredIndex !== null && chartPoints[hoveredIndex] && (
+                    <line
+                      x1={chartPoints[hoveredIndex].x}
+                      x2={chartPoints[hoveredIndex].x}
+                      y1={chartPadding.top}
+                      y2={chartPadding.top + innerHeight}
+                      stroke="var(--portal-accent)"
+                      strokeOpacity="0.25"
+                      strokeWidth="1.5"
+                      strokeDasharray="4 4"
+                    />
+                  )}
+
                   {/* ORDER BARS */}
-                  {chartPoints.map((point) => {
+                  {chartPoints.map((point, index) => {
                     const barWidth = Math.min(
                       38,
                       innerWidth / trend.length / 2.2
                     );
+                    const isHovered = hoveredIndex === index;
 
                     return (
                       <rect
@@ -1089,7 +1233,7 @@ export default function DashboardPage() {
                         height={point.ordersHeight}
                         rx="5"
                         fill="currentColor"
-                        fillOpacity="0.09"
+                        fillOpacity={isHovered ? 0.18 : 0.09}
                       />
                     );
                   })}
@@ -1112,25 +1256,22 @@ export default function DashboardPage() {
                   />
 
                   {/* REVENUE POINTS */}
-                  {chartPoints.map((point) => (
-                    <g key={`point-${point.key}`}>
-                      <circle
-                        cx={point.x}
-                        cy={point.revenueY}
-                        r="5"
-                        fill="var(--portal-surface)"
-                        stroke="var(--portal-accent)"
-                        strokeWidth="2.5"
-                      />
-
-                      <title>
-                        {`${point.fullLabel}: ${formatCurrency(
-                          point.revenue,
-                          stats.restaurant.currency
-                        )} revenue · ${point.orders} orders`}
-                      </title>
-                    </g>
-                  ))}
+                  {chartPoints.map((point, index) => {
+                    const isHovered = hoveredIndex === index;
+                    return (
+                      <g key={`point-${point.key}`}>
+                        <circle
+                          cx={point.x}
+                          cy={point.revenueY}
+                          r={isHovered ? 7 : 5}
+                          fill={isHovered ? 'var(--portal-accent)' : 'var(--portal-surface)'}
+                          stroke="var(--portal-accent)"
+                          strokeWidth="2.5"
+                          style={{ transition: 'r 0.15s, fill 0.15s' }}
+                        />
+                      </g>
+                    );
+                  })}
 
                   {/* X AXIS */}
                   {chartPoints.map((point) => (
@@ -1170,6 +1311,128 @@ export default function DashboardPage() {
                       </text>
                     );
                   })}
+
+                  {/* INVISIBLE HIT AREAS — one per column */}
+                  {chartPoints.map((point, index) => {
+                    const colWidth = trend.length > 1
+                      ? innerWidth / (trend.length - 1)
+                      : innerWidth;
+                    const hitX = Math.max(chartPadding.left, point.x - colWidth / 2);
+                    const hitW = Math.min(colWidth, chartWidth - chartPadding.right - hitX);
+
+                    return (
+                      <rect
+                        key={`hit-${point.key}`}
+                        x={hitX}
+                        y={chartPadding.top}
+                        width={hitW}
+                        height={innerHeight}
+                        fill="transparent"
+                        style={{ cursor: 'crosshair' }}
+                        onMouseEnter={() => setHoveredIndex(index)}
+                        onMouseMove={() => setHoveredIndex(index)}
+                        onTouchStart={() => setHoveredIndex(index)}
+                        onTouchMove={(e) => {
+                          e.preventDefault();
+                          setHoveredIndex(index);
+                        }}
+                        onClick={() => setHoveredIndex(index)}
+                      />
+                    );
+                  })}
+
+                  {/* HOVER TOOLTIP */}
+                  {hoveredIndex !== null && chartPoints[hoveredIndex] && (() => {
+                    const pt = chartPoints[hoveredIndex];
+                    const ttW = 170;
+                    const ttH = 72;
+                    const ttPad = 10;
+                    const rawX = pt.x - ttW / 2;
+                    const clampedX = Math.max(
+                      chartPadding.left,
+                      Math.min(rawX, chartWidth - chartPadding.right - ttW)
+                    );
+                    const ttY = Math.max(
+                      chartPadding.top + ttPad,
+                      pt.revenueY - ttH - 14
+                    );
+
+                    return (
+                      <g key="tooltip" style={{ pointerEvents: 'none' }}>
+                        <defs>
+                          <filter id="tooltip-shadow" x="-20%" y="-20%" width="140%" height="140%">
+                            <feDropShadow dx="0" dy="3" stdDeviation="5" floodOpacity="0.12" />
+                          </filter>
+                        </defs>
+                        <rect
+                          x={clampedX}
+                          y={ttY}
+                          width={ttW}
+                          height={ttH}
+                          rx="10"
+                          fill="var(--portal-surface)"
+                          stroke="var(--portal-accent)"
+                          strokeOpacity="0.3"
+                          strokeWidth="1"
+                          filter="url(#tooltip-shadow)"
+                        />
+                        {/* Date label */}
+                        <text
+                          x={clampedX + ttW / 2}
+                          y={ttY + 18}
+                          textAnchor="middle"
+                          fontSize="10"
+                          fontWeight="700"
+                          fill="var(--portal-accent)"
+                          fillOpacity="0.9"
+                        >
+                          {pt.fullLabel}
+                        </text>
+                        {/* Revenue */}
+                        <text
+                          x={clampedX + 14}
+                          y={ttY + 38}
+                          fontSize="11"
+                          fontWeight="800"
+                          fill="currentColor"
+                          fillOpacity="0.9"
+                        >
+                          {formatCurrency(pt.revenue, stats.restaurant.currency)}
+                        </text>
+                        <text
+                          x={clampedX + ttW - 14}
+                          y={ttY + 38}
+                          textAnchor="end"
+                          fontSize="9"
+                          fill="currentColor"
+                          fillOpacity="0.5"
+                        >
+                          revenue
+                        </text>
+                        {/* Orders */}
+                        <text
+                          x={clampedX + 14}
+                          y={ttY + 57}
+                          fontSize="11"
+                          fontWeight="800"
+                          fill="currentColor"
+                          fillOpacity="0.9"
+                        >
+                          {pt.orders}
+                        </text>
+                        <text
+                          x={clampedX + ttW - 14}
+                          y={ttY + 57}
+                          textAnchor="end"
+                          fontSize="9"
+                          fill="currentColor"
+                          fillOpacity="0.5"
+                        >
+                          orders
+                        </text>
+                      </g>
+                    );
+                  })()}
                 </svg>
               </div>
             </div>
@@ -1228,7 +1491,7 @@ export default function DashboardPage() {
                   className="text-[9px] font-black uppercase tracking-[0.14em]"
                   style={{ color: 'var(--portal-text)' }}
                 >
-                  Daily order average
+                  {analytics.avgLabel} order average
                 </p>
 
                 <p className="mt-1 text-sm font-black">
@@ -1239,7 +1502,7 @@ export default function DashboardPage() {
                   className="mt-0.5 text-[10px]"
                   style={{ color: 'var(--portal-text)' }}
                 >
-                  Orders per day
+                  Orders per {chartView === 'monthly' ? 'month' : chartView === 'yearly' ? 'year' : 'day'}
                 </p>
               </div>
             </div>

@@ -593,10 +593,10 @@ export default function DashboardLayout({
 
     {
       name: 'Reports',
-      href: '#',
+      href: '/dashboard/reports',
       icon: BarChart3,
-      type: 'coming-soon' as const,
-      locked: true,
+      type: 'link' as const,
+      locked: false,
     },
   ];
 

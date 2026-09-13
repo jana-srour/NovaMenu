@@ -1124,6 +1124,7 @@ export default function PublicMenuPage() {
 
       return {
         order_id: orderId,
+        menu_item_id: item.id,
         item_name:
           `${item.name}${extrasText}`,
         quantity: item.quantity,
