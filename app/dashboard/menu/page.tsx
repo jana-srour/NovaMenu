@@ -66,6 +66,13 @@ interface MenuExtra {
   sort_order: number;
 }
 
+type OrderingOption = 'dine_in' | 'delivery';
+
+const defaultOrderingOptions: OrderingOption[] = [
+  'dine_in',
+  'delivery',
+];
+
 export default function MenuManagementPage() {
   const [categories, setCategories] = useState<Category[]>([]);
   const [items, setItems] = useState<MenuItem[]>([]);
@@ -79,17 +86,21 @@ export default function MenuManagementPage() {
   const [restaurantId, setRestaurantId] = useState<string | null>(null);
   const [restaurantSettings, setRestaurantSettings] = useState<{
     currency: string;
+    ordering_options: OrderingOption[];
     price_adjustment_enabled: boolean;
     price_adjustment_mode: 'percentage' | 'fixed' | null;
     price_adjustment_direction: 'increase' | 'decrease' | null;
     price_adjustment_value: number | null;
   }>({
     currency: '$',
+    ordering_options: defaultOrderingOptions,
     price_adjustment_enabled: false,
     price_adjustment_mode: 'percentage',
     price_adjustment_direction: 'increase',
     price_adjustment_value: 0,
   });
+  const [savingOrderingOptions, setSavingOrderingOptions] =
+    useState(false);
   const [errorMessage, setErrorMessage] = useState('');
 
   const [hasMenuAccess, setHasMenuAccess] = useState(false);
@@ -314,13 +325,21 @@ export default function MenuManagementPage() {
 
       const { data: restaurantData, error: restaurantError } = await supabase
         .from('restaurants')
-        .select('currency, price_adjustment_enabled, price_adjustment_mode, price_adjustment_direction, price_adjustment_value')
+        .select('currency, ordering_options, price_adjustment_enabled, price_adjustment_mode, price_adjustment_direction, price_adjustment_value')
         .eq('id', id)
         .maybeSingle();
 
       if (!restaurantError && restaurantData) {
         setRestaurantSettings({
           currency: restaurantData.currency || '$',
+          ordering_options:
+            Array.isArray(restaurantData.ordering_options) &&
+            restaurantData.ordering_options.length > 0
+              ? restaurantData.ordering_options.filter(
+                  (option: string): option is OrderingOption =>
+                    option === 'dine_in' || option === 'delivery'
+                )
+              : defaultOrderingOptions,
           price_adjustment_enabled: restaurantData.price_adjustment_enabled === true,
           price_adjustment_mode: restaurantData.price_adjustment_mode || 'percentage',
           price_adjustment_direction: restaurantData.price_adjustment_direction || 'increase',
@@ -632,6 +651,34 @@ export default function MenuManagementPage() {
     // Restaurant-wide adjustments are customer-facing and are calculated by
     // the public menu, not written back to or displayed as this saved value.
     return roundPrice(Number(item.price) || 0);
+  };
+
+  const saveOrderingOptions = async (
+    orderingOptions: OrderingOption[]
+  ) => {
+    if (!restaurantId || orderingOptions.length === 0) {
+      return;
+    }
+
+    setSavingOrderingOptions(true);
+    setErrorMessage('');
+
+    const { error } = await supabase
+      .from('restaurants')
+      .update({ ordering_options: orderingOptions })
+      .eq('id', restaurantId);
+
+    if (error) {
+      setErrorMessage(`Could not save order options: ${error.message}`);
+    } else {
+      setRestaurantSettings((current) => ({
+        ...current,
+        ordering_options: orderingOptions,
+      }));
+      notifyRestaurantRealtimeSync(supabase, restaurantId, 'menu');
+    }
+
+    setSavingOrderingOptions(false);
   };
 
   const formatPrice = (price: number) => {
@@ -2200,6 +2247,63 @@ export default function MenuManagementPage() {
             {errorMessage}
           </div>
         )}
+
+        <section
+          className="mb-7 rounded-2xl p-5 shadow-sm"
+          style={{
+            background: 'var(--portal-surface)',
+            border: '1px solid var(--portal-border)',
+          }}
+        >
+          <div className="flex flex-col gap-1 sm:flex-row sm:items-start sm:justify-between">
+            <div>
+              <h2 className="text-base font-black">Ordering options</h2>
+              <p className="mt-1 text-xs" style={{ color: 'var(--portal-text)' }}>
+                Choose which order types customers can use from your public menu.
+              </p>
+            </div>
+            {savingOrderingOptions && (
+              <span className="text-xs font-semibold" style={{ color: 'var(--portal-accent)' }}>
+                Saving...
+              </span>
+            )}
+          </div>
+
+          <div className="mt-4 grid gap-2 sm:grid-cols-3">
+            {[
+              { value: defaultOrderingOptions, label: 'Both', description: 'Dine-in and delivery' },
+              { value: ['dine_in'] as OrderingOption[], label: 'Dine-in only', description: 'Table orders only' },
+              { value: ['delivery'] as OrderingOption[], label: 'Delivery only', description: 'Takeaway or delivery' },
+            ].map((option) => {
+              const isSelected =
+                option.value.length === restaurantSettings.ordering_options.length &&
+                option.value.every((value) => restaurantSettings.ordering_options.includes(value));
+
+              return (
+                <button
+                  key={option.label}
+                  type="button"
+                  disabled={savingOrderingOptions}
+                  onClick={() => saveOrderingOptions(option.value)}
+                  className="rounded-xl border px-4 py-3 text-left transition disabled:cursor-not-allowed disabled:opacity-60"
+                  style={{
+                    borderColor: isSelected
+                      ? 'var(--portal-accent)'
+                      : 'var(--portal-border)',
+                    background: isSelected
+                      ? 'var(--portal-accent-soft)'
+                      : 'transparent',
+                  }}
+                >
+                  <span className="block text-sm font-bold">{option.label}</span>
+                  <span className="mt-1 block text-[11px]" style={{ color: 'var(--portal-text)' }}>
+                    {option.description}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+        </section>
 
         {/* =================================================
             STATS

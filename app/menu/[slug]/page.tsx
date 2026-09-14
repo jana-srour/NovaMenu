@@ -83,12 +83,20 @@ interface Restaurant {
   price_adjustment_direction: 'increase' | 'decrease' | null;
   price_adjustment_enabled: boolean | null;
   price_adjustment_value: number | null;
+  ordering_options: OrderingOption[];
 }
 
 interface CartItem extends MenuItem {
   quantity: number;
   selectedExtras: CartExtra[];
 }
+
+type OrderingOption = 'dine_in' | 'delivery';
+
+const defaultOrderingOptions: OrderingOption[] = [
+  'dine_in',
+  'delivery',
+];
 
 export default function PublicMenuPage() {
   const params = useParams();
@@ -143,6 +151,9 @@ export default function PublicMenuPage() {
     'Delivery' | 'Restaurant'
   >('Restaurant');
 
+  const availableOrderingOptions =
+    restaurant?.ordering_options || defaultOrderingOptions;
+
   const [customerAddress, setCustomerAddress] =
     useState('');
 
@@ -151,6 +162,21 @@ export default function PublicMenuPage() {
 
   const [customerPhone, setCustomerPhone] =
     useState('');
+
+  useEffect(() => {
+    if (
+      availableOrderingOptions.includes('dine_in') &&
+      availableOrderingOptions.includes('delivery')
+    ) {
+      return;
+    }
+
+    setOrderType(
+      availableOrderingOptions.includes('delivery')
+        ? 'Delivery'
+        : 'Restaurant'
+    );
+  }, [availableOrderingOptions]);
 
   // ==================================================
   // DISCOUNT HELPERS
@@ -496,7 +522,7 @@ export default function PublicMenuPage() {
                     'restaurants'
                   )
                   .select(
-                    'id, name, description, logo_url, currency, email, whatsapp_number, phone_number, mobile_number, website_url, facebook_url, instagram_url, twitter_url, address, price_adjustment_mode, price_adjustment_direction, price_adjustment_enabled, price_adjustment_value'
+                    'id, name, description, logo_url, currency, email, whatsapp_number, phone_number, mobile_number, website_url, facebook_url, instagram_url, twitter_url, address, price_adjustment_mode, price_adjustment_direction, price_adjustment_enabled, price_adjustment_value, ordering_options'
                   )
                   .eq(
                     'id',
@@ -551,7 +577,7 @@ export default function PublicMenuPage() {
       } = await supabase
         .from('restaurants')
         .select(
-          'id, name, description, logo_url, currency, email, whatsapp_number, phone_number, mobile_number, website_url, facebook_url, instagram_url, twitter_url, address, price_adjustment_mode, price_adjustment_direction, price_adjustment_enabled, price_adjustment_value'
+          'id, name, description, logo_url, currency, email, whatsapp_number, phone_number, mobile_number, website_url, facebook_url, instagram_url, twitter_url, address, price_adjustment_mode, price_adjustment_direction, price_adjustment_enabled, price_adjustment_value, ordering_options'
         )
         .eq(
           'slug',
@@ -625,6 +651,14 @@ export default function PublicMenuPage() {
           price_adjustment_value:
             restaurantData.price_adjustment_value ??
             null,
+          ordering_options:
+            Array.isArray(restaurantData.ordering_options) &&
+            restaurantData.ordering_options.length > 0
+              ? restaurantData.ordering_options.filter(
+                  (option: string): option is OrderingOption =>
+                    option === 'dine_in' || option === 'delivery'
+                )
+              : defaultOrderingOptions,
         };
 
       setRestaurant(
@@ -4648,7 +4682,14 @@ export default function PublicMenuPage() {
                                 Order Type
                               </label>
 
-                              <div className="grid grid-cols-2 gap-2">
+                              <div
+                                className={`grid gap-2 ${
+                                  availableOrderingOptions.length === 1
+                                    ? 'grid-cols-1'
+                                    : 'grid-cols-2'
+                                }`}
+                              >
+                                {availableOrderingOptions.includes('dine_in') && (
                                 <button
                                   type="button"
                                   onClick={() => setOrderType('Restaurant')}
@@ -4670,7 +4711,9 @@ export default function PublicMenuPage() {
                                 >
                                   🍽️ Inside Restaurant
                                 </button>
+                                )}
 
+                                {availableOrderingOptions.includes('delivery') && (
                                 <button
                                   type="button"
                                   onClick={() => setOrderType('Delivery')}
@@ -4692,6 +4735,7 @@ export default function PublicMenuPage() {
                                 >
                                   🏠 Delivery
                                 </button>
+                                )}
                               </div>
                             </div>
 
