@@ -118,6 +118,8 @@ export default function PrintersSettingsPage() {
   const [showScanDialog, setShowScanDialog] = useState(false);
   const [message, setMessage] = useState('');
   const [messageType, setMessageType] = useState<'info' | 'success' | 'error'>('info');
+  const [restaurantId, setRestaurantId] = useState<string | null>(null);
+  const [uploadingLogo, setUploadingLogo] = useState(false);
 
   // Receipt Template State
   const [template, setTemplate] = useState<ReceiptTemplateConfig>(defaultReceiptTemplate);
@@ -160,6 +162,7 @@ export default function PrintersSettingsPage() {
         .maybeSingle();
 
       if (membership?.restaurant_id) {
+        setRestaurantId(membership.restaurant_id);
         setTheme(await loadRestaurantTheme(supabase, membership.restaurant_id));
 
         const { data: restaurant } = await supabase
@@ -240,6 +243,59 @@ export default function PrintersSettingsPage() {
       return updated;
     });
     setActivePreset('');
+  };
+
+  const handleTemplateLogoUpload = async (
+    event: React.ChangeEvent<HTMLInputElement>
+  ) => {
+    const file = event.target.files?.[0];
+
+    if (!file || !restaurantId) {
+      return;
+    }
+
+    if (!file.type.startsWith('image/')) {
+      setMessage('Please select an image file.');
+      setMessageType('error');
+      return;
+    }
+
+    if (file.size > 5 * 1024 * 1024) {
+      setMessage('Logo must be smaller than 5MB.');
+      setMessageType('error');
+      return;
+    }
+
+    setUploadingLogo(true);
+    setMessage('');
+
+    try {
+      const extension = file.name.split('.').pop()?.toLowerCase() || 'jpg';
+      const fileName = `${restaurantId}/receipt-logo/${crypto.randomUUID()}.${extension}`;
+      const { error: uploadError } = await supabase.storage
+        .from('menu-images')
+        .upload(fileName, file, { cacheControl: '3600', upsert: false });
+
+      if (uploadError) {
+        throw uploadError;
+      }
+
+      const { data } = supabase.storage.from('menu-images').getPublicUrl(fileName);
+
+      if (!data.publicUrl) {
+        throw new Error('Could not generate logo URL.');
+      }
+
+      updateTemplateField('logoUrl', data.publicUrl);
+      setMessage('Logo uploaded and added to the receipt template.');
+      setMessageType('success');
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : 'Failed to upload logo.');
+      setMessageType('error');
+    } finally {
+      setUploadingLogo(false);
+      event.target.value = '';
+    }
   };
 
   const applyPreset = (presetKey: string) => {
@@ -1323,6 +1379,41 @@ export default function PrintersSettingsPage() {
 
                       {template.showHeaderLogo && (
                         <div className="p-3.5 rounded-2xl border space-y-2 bg-black/5" style={{ borderColor: theme.portal_border }}>
+                          <div className="flex flex-wrap items-center gap-3">
+                            {template.logoUrl ? (
+                              <img
+                                src={template.logoUrl}
+                                alt="Receipt logo preview"
+                                className="h-16 w-16 rounded-xl border object-contain p-1"
+                                style={{ borderColor: theme.portal_border, background: theme.portal_background }}
+                              />
+                            ) : (
+                              <div
+                                className="flex h-16 w-16 items-center justify-center rounded-xl border text-[10px] text-center"
+                                style={{ borderColor: theme.portal_border, color: theme.portal_text }}
+                              >
+                                No logo
+                              </div>
+                            )}
+                            <div>
+                              <p className="text-xs font-bold">Receipt logo</p>
+                              <p className="mt-1 text-[10px] opacity-70">Shown at the top of the printed receipt.</p>
+                              <label
+                                className="mt-2 inline-flex cursor-pointer items-center gap-2 rounded-lg border px-3 py-2 text-[10px] font-bold"
+                                style={{ borderColor: theme.portal_border }}
+                              >
+                                <input
+                                  type="file"
+                                  accept="image/*"
+                                  onChange={handleTemplateLogoUpload}
+                                  disabled={uploadingLogo}
+                                  className="hidden"
+                                />
+                                {uploadingLogo ? 'Uploading...' : template.logoUrl ? 'Replace logo' : 'Upload logo'}
+                              </label>
+                            </div>
+                          </div>
+
                           <label className="block text-xs font-bold">
                             Header Stars / Emblem Characters
                             <input

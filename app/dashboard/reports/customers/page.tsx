@@ -43,6 +43,8 @@ const periods: { key: Period; label: string }[] = [
 type OrderRow = {
   id: string;
   customer_name: string | null;
+  customer_phone: string | null;
+  customer_address: string | null;
   status: string | null;
   total: number | null;
   created_at: string;
@@ -51,6 +53,8 @@ type OrderRow = {
 type Customer = {
   key: string;
   name: string;
+  phone: string;
+  address: string;
   orders: OrderRow[];
   totalSpend: number;
   firstOrderAt: number;
@@ -253,11 +257,11 @@ function getCustomerMap(
       continue;
     }
 
-    const key = normalizeCustomerName(
-      order.customer_name,
-    );
+    const phoneKey = normalizeCustomerPhone(order.customer_phone);
+    const nameKey = normalizeCustomerName(order.customer_name);
+    const key = phoneKey ? `phone:${phoneKey}` : `name:${nameKey}`;
 
-    if (!key) continue;
+    if (!phoneKey && !nameKey) continue;
 
     const existing = map.get(key);
 
@@ -280,6 +284,14 @@ function getCustomerMap(
         existing.firstOrderAt =
           timestamp;
       }
+
+      if (order.customer_phone?.trim()) {
+        existing.phone = order.customer_phone.trim();
+      }
+
+      if (order.customer_address?.trim()) {
+        existing.address = order.customer_address.trim();
+      }
     } else {
       const timestamp =
         new Date(
@@ -291,6 +303,8 @@ function getCustomerMap(
         name: displayCustomerName(
           order.customer_name,
         ),
+        phone: order.customer_phone?.trim() || '',
+        address: order.customer_address?.trim() || '',
         orders: [order],
         totalSpend: Number(
           order.total || 0,
@@ -538,7 +552,7 @@ export default function CustomersReportPage() {
             supabase
               .from('orders')
               .select(
-                'id, order_number, customer_name, status, total, created_at',
+                'id, order_number, customer_name, customer_phone, customer_address, status, total, created_at',
               )
               .eq(
                 'restaurant_id',
@@ -1864,6 +1878,14 @@ export default function CustomersReportPage() {
                     </th>
 
                     <th className="px-5 py-4">
+                      Phone
+                    </th>
+
+                    <th className="px-5 py-4">
+                      Address
+                    </th>
+
+                    <th className="px-5 py-4">
                       Orders
                     </th>
 
@@ -1935,10 +1957,20 @@ export default function CustomersReportPage() {
                                       'var(--portal-text-muted)',
                                   }}
                                 >
-                                  Customer
+                                  {customer.address || 'Customer'}
                                 </p>
                               </div>
                             </div>
+                          </td>
+
+                          <td className="px-5 py-4 text-xs">
+                            {customer.phone || '—'}
+                          </td>
+
+                          <td className="max-w-[240px] px-5 py-4 text-xs">
+                            <span className="block truncate" title={customer.address}>
+                              {customer.address || '—'}
+                            </span>
                           </td>
 
                           <td className="px-5 py-4 text-xs font-black">
@@ -2295,4 +2327,10 @@ function InsightCard({
       </p>
     </div>
   );
+}
+
+function normalizeCustomerPhone(
+  value: string | null | undefined,
+) {
+  return String(value || '').replace(/\D/g, '');
 }

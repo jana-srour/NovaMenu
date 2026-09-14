@@ -86,6 +86,14 @@ export default function TeamPage() {
     useState(true);
 
   const [planAllowed, setPlanAllowed] = useState(true);
+  const [planCode, setPlanCode] = useState<BillingPlan | null>(null);
+  const [subscriptionStatus, setSubscriptionStatus] =
+    useState<SubscriptionStatus | null>(null);
+
+  const proMemberLimitReached =
+    planCode === 'pro' &&
+    subscriptionStatus === 'active' &&
+    members.length >= 3;
 
   const [managingMember, setManagingMember] =
     useState<TeamMember | null>(null);
@@ -225,6 +233,8 @@ export default function TeamPage() {
       );
 
       setPlanAllowed(allowed);
+      setPlanCode(subscription?.plan_code || null);
+      setSubscriptionStatus(subscription?.status || null);
 
       if (!allowed) {
         return;
@@ -1439,7 +1449,7 @@ export default function TeamPage() {
     return (
       <PlanRequired
         featureName="Team Management"
-        requiredPlan="Enterprise"
+        requiredPlan="Pro"
       />
     );
   }
@@ -2299,9 +2309,27 @@ export default function TeamPage() {
                   >
                     Create login credentials for a restaurant employee.
                   </p>
+                  {planCode === 'pro' && (
+                    <p className="mt-2 text-xs font-semibold" style={{ color: 'var(--portal-accent)' }}>
+                      Pro plan: {members.length} of 3 workspace accounts used.
+                    </p>
+                  )}
                 </div>
 
-                {positions.length === 0 ? (
+                {proMemberLimitReached ? (
+                  <div
+                    className="mt-6 rounded-2xl border p-4"
+                    style={{
+                      background: 'var(--portal-background)',
+                      borderColor: 'var(--portal-border)',
+                    }}
+                  >
+                    <p className="text-sm font-bold">Pro plan member limit reached</p>
+                    <p className="mt-1 text-xs leading-5" style={{ color: 'var(--portal-text)', opacity: 0.5 }}>
+                      Upgrade to Enterprise to add more workspace accounts.
+                    </p>
+                  </div>
+                ) : positions.length === 0 ? (
                   <div
                     className="mt-6 rounded-2xl border p-4"
                     style={{

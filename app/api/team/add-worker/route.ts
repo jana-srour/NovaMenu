@@ -1,6 +1,11 @@
 import { createClient } from '@supabase/supabase-js';
 import { NextResponse } from 'next/server';
 import { canManageTeam } from '@/lib/team-permissions';
+import {
+  subscriptionAllows,
+  type BillingPlan,
+  type SubscriptionStatus,
+} from '@/lib/billing/plans';
 
 export async function POST(req: Request) {
   try {
@@ -167,6 +172,51 @@ export async function POST(req: Request) {
         },
         { status: 403 }
       );
+    }
+
+    const { data: subscription } = await supabaseAdmin
+      .from('restaurant_subscriptions')
+      .select('plan_code, status, trial_ends_at')
+      .eq('restaurant_id', restaurantId)
+      .maybeSingle();
+
+    if (!subscriptionAllows(
+      subscription as {
+        plan_code: BillingPlan;
+        status: SubscriptionStatus;
+        trial_ends_at: string;
+      } | null,
+      'team'
+    )) {
+      return NextResponse.json(
+        { error: 'Team Management requires an active Pro or Enterprise plan.' },
+        { status: 403 }
+      );
+    }
+
+    if (
+      subscription?.plan_code === 'pro' &&
+      subscription.status === 'active'
+    ) {
+      const { count: memberCount, error: memberCountError } =
+        await supabaseAdmin
+          .from('restaurant_members')
+          .select('user_id', { count: 'exact', head: true })
+          .eq('restaurant_id', restaurantId);
+
+      if (memberCountError) {
+        return NextResponse.json(
+          { error: memberCountError.message },
+          { status: 500 }
+        );
+      }
+
+      if ((memberCount || 0) >= 3) {
+        return NextResponse.json(
+          { error: 'The Pro plan supports the owner plus 2 additional team members.' },
+          { status: 403 }
+        );
+      }
     }
 
     // =========================================================

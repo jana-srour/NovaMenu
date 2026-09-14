@@ -144,6 +144,13 @@ export function printOrderReceipt({
             letter-spacing: 3px;
             margin-bottom: 4px;
           }
+          .header-logo {
+            display: block;
+            max-width: 130px;
+            max-height: 64px;
+            object-fit: contain;
+            margin: 0 auto 4px;
+          }
           .divider {
             white-space: pre;
             letter-spacing: -1px;
@@ -226,7 +233,9 @@ export function printOrderReceipt({
         <div class="${template.headerAlignment}">
           ${
             template.showHeaderLogo
-              ? `<div class="stars-emblem">${template.headerStarsText || '★ ★ ★'}</div>`
+              ? template.logoUrl
+                ? `<img class="header-logo" src="${template.logoUrl}" alt="Receipt logo" />`
+                : `<div class="stars-emblem">${template.headerStarsText || '★ ★ ★'}</div>`
               : ''
           }
           <div class="store-title">${template.storeName || 'NOVAMENU'}</div>
@@ -467,9 +476,13 @@ export function ReceiptPreview({
           }`}
         >
           {template.showHeaderLogo && (
-            <div className="mx-auto mb-1 flex items-center justify-center font-black tracking-widest text-[16px] text-black">
-              {template.headerStarsText || '★ ★ ★'}
-            </div>
+            template.logoUrl ? (
+              <img src={template.logoUrl} alt="Receipt logo" className="mx-auto mb-1 h-16 max-w-[130px] object-contain" />
+            ) : (
+              <div className="mx-auto mb-1 flex items-center justify-center font-black tracking-widest text-[16px] text-black">
+                {template.headerStarsText || '★ ★ ★'}
+              </div>
+            )
           )}
           <h2 className="text-[17px] font-black uppercase tracking-tight">
             {template.storeName || 'NOVAMENU'}

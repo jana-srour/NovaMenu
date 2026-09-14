@@ -397,6 +397,8 @@ function buildExportSheets(
       string,
       {
         name: string;
+        phone: string;
+        address: string;
         orders: number;
         spend: number;
         first: string;
@@ -410,13 +412,21 @@ function buildExportSheets(
 
       if (name.toLowerCase() === 'guest') continue;
 
-      const key = name.toLowerCase();
+      const phone = order.customer_phone?.trim() || '';
+      const address = order.customer_address?.trim() || '';
+      const normalizedPhone = phone.replace(/\D/g, '');
+      const key = normalizedPhone
+        ? `phone:${normalizedPhone}`
+        : `name:${name.toLowerCase()}`;
 
       const current = customers.get(key);
 
       if (current) {
         current.orders += 1;
         current.spend += money(order.total);
+
+        if (phone) current.phone = phone;
+        if (address) current.address = address;
 
         if (order.created_at < current.first) {
           current.first = order.created_at;
@@ -428,6 +438,8 @@ function buildExportSheets(
       } else {
         customers.set(key, {
           name,
+          phone,
+          address,
           orders: 1,
           spend: money(order.total),
           first: order.created_at,
@@ -439,6 +451,8 @@ function buildExportSheets(
     sheets['Customers'] = [
       [
         'Customer',
+        'Phone',
+        'Address',
         'Orders',
         'Total Spend',
         'Average Order',
@@ -450,6 +464,8 @@ function buildExportSheets(
         .sort((a, b) => b.spend - a.spend)
         .map((customer) => [
           customer.name,
+          customer.phone,
+          customer.address,
           customer.orders,
           customer.spend,
           customer.spend / customer.orders,
